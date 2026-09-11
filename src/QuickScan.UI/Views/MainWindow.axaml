@@ -121,11 +121,32 @@
                                 <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
                                 <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
                             </Style>
+                            <Style Selector="Border.treeNode">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="BorderThickness" Value="1" />
+                                <Setter Property="BorderBrush" Value="Transparent" />
+                            </Style>
+                            <Style Selector="Border.treeNode:pointerover">
+                                <Setter Property="Background" Value="#181825" />
+                            </Style>
+                            <Style Selector="Border.treeNode.selected">
+                                <Setter Property="Background" Value="#313244" />
+                                <Setter Property="BorderBrush" Value="#89b4fa" />
+                            </Style>
+                            <Style Selector="TextBlock.treeNodeText">
+                                <Setter Property="Foreground" Value="#cdd6f4" />
+                            </Style>
+                            <Style Selector="TextBlock.treeNodeText.selected">
+                                <Setter Property="Foreground" Value="#89b4fa" />
+                                <Setter Property="FontWeight" Value="Bold" />
+                            </Style>
                         </TreeView.Styles>
                         <TreeView.ItemTemplate>
                             <TreeDataTemplate ItemsSource="{Binding Children}">
-                                <StackPanel Orientation="Horizontal" Spacing="6" Tapped="OnTreeNodeTapped" Cursor="Hand" Background="Transparent">
-                                    <StackPanel.ContextMenu>
+                                <Border Classes="treeNode" Classes.selected="{Binding IsSelected}"
+                                        CornerRadius="6" Padding="6,4" Margin="0,1"
+                                        Cursor="Hand" Tapped="OnTreeNodeTapped">
+                                    <Border.ContextMenu>
                                         <ContextMenu>
                                             <MenuItem Header="{DynamicResource Button.ScanFolder}"
                                                       Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).StartScanCommand}"
@@ -134,10 +155,13 @@
                                                       Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).OpenInExplorerCommand}"
                                                       CommandParameter="{Binding Path}" />
                                         </ContextMenu>
-                                    </StackPanel.ContextMenu>
-                                    <TextBlock Text="{Binding Icon}" FontSize="13" />
-                                    <TextBlock Text="{Binding Name}" FontSize="13" Foreground="#cdd6f4" />
-                                </StackPanel>
+                                    </Border.ContextMenu>
+                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Icon}" FontSize="13" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding Name}" FontSize="13" VerticalAlignment="Center"
+                                                   Classes="treeNodeText" Classes.selected="{Binding IsSelected}" />
+                                    </StackPanel>
+                                </Border>
                             </TreeDataTemplate>
                         </TreeView.ItemTemplate>
                     </TreeView>
@@ -150,13 +174,28 @@
 
             <!-- Main Content Area -->
             <Grid Grid.Column="2" RowDefinitions="Auto,Auto,*" Background="#1e1e2e">
-                <!-- Current Path Bar -->
-                <Border Grid.Row="0" Background="#181825" BorderBrush="#313244" BorderThickness="0,0,0,1" Padding="12,8">
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="{Binding CurrentPath}" FontWeight="SemiBold" FontSize="14"
-                                   Foreground="#89b4fa" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                        <Button Grid.Column="1" Command="{Binding OpenInExplorerCommand}" CommandParameter="{Binding CurrentPath}"
-                                Content="{DynamicResource Button.Open}" FontSize="11" Padding="8,4" Margin="8,0,0,0" />
+                <!-- Selected Folder / Item Header Banner -->
+                <Border Grid.Row="0" Background="#181825" BorderBrush="#313244" BorderThickness="0,0,0,1" Padding="14,10"
+                        IsVisible="{Binding HasCurrentPath}">
+                    <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
+                        <!-- Top Row: Icon + Folder Name + Formatted Disk Space -->
+                        <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding CurrentRootIcon}" FontSize="20" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding CurrentDisplayName}" FontWeight="Bold" FontSize="18" Foreground="#cdd6f4"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="550" />
+                            <TextBlock Text="{Binding FormattedSizeInParentheses}" FontWeight="SemiBold" FontSize="16"
+                                       Foreground="#f9e2af" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <!-- Top Row Right: Open in Explorer Action Button -->
+                        <Button Grid.Row="0" Grid.Column="1" Command="{Binding OpenInExplorerCommand}" CommandParameter="{Binding CurrentPath}"
+                                Content="{DynamicResource Button.Open}" FontSize="12" Padding="10,5" VerticalAlignment="Center" />
+
+                        <!-- Bottom Row: Full Path -->
+                        <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                   Text="{Binding CurrentPath}" FontSize="12" Foreground="#89b4fa"
+                                   Margin="0,4,0,0" TextTrimming="CharacterEllipsis"
+                                   ToolTip.Tip="{Binding CurrentPath}" />
                     </Grid>
                 </Border>
 
@@ -263,6 +302,23 @@
                              Background="Transparent"
                              DoubleTapped="OnBarItemDoubleTapped"
                              Padding="8">
+                        <ListBox.Styles>
+                            <Style Selector="ListBoxItem">
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="Margin" Value="0" />
+                                <Setter Property="Background" Value="Transparent" />
+                            </Style>
+                            <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+                                <Setter Property="Background" Value="Transparent" />
+                            </Style>
+                            <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+                                <Setter Property="Background" Value="Transparent" />
+                            </Style>
+                            <Style Selector="Border#ItemContainer:pointerover">
+                                <Setter Property="BorderBrush" Value="#89b4fa" />
+                                <Setter Property="Background" Value="#24273a" />
+                            </Style>
+                        </ListBox.Styles>
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="vm:BarItemViewModel">
                                 <Border x:Name="ItemContainer"
@@ -272,6 +328,8 @@
                                         BorderBrush="#313244"
                                         BorderThickness="1"
                                         ToolTip.Tip="{Binding TooltipDetails}"
+                                        Cursor="Hand"
+                                        Tapped="OnBarItemTapped"
                                         ClipToBounds="True">
                                     <Border.ContextMenu>
                                         <ContextMenu>

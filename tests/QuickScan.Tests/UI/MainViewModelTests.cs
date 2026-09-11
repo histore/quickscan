@@ -156,4 +156,148 @@ public sealed class MainViewModelTests
         Assert.Equal(fileEntry, vm.CurrentRoot);
         Assert.True(vm.CanGoUp);
     }
+
+    [Fact]
+    public void HeaderBanner_WhenNoPathSelected_IsHidden()
+    {
+        // Arrange
+        var fakeEngine = new FakeScanEngine();
+        var cache = new InMemoryScanCache();
+        using var scanService = new ScanService(fakeEngine, cache);
+        var driveService = new FakeDriveService();
+        var launcher = new FakeFileSystemLauncher();
+        var locService = new FakeLocalizationService();
+        var vm = new MainViewModel(scanService, driveService, launcher, cache, locService);
+
+        // Assert: Before any selection, banner should be hidden
+        Assert.False(vm.HasCurrentPath);
+        Assert.Equal(string.Empty, vm.CurrentDisplayName);
+        Assert.Equal("📁", vm.CurrentRootIcon);
+    }
+
+    [Fact]
+    public async Task HeaderBanner_WhenFolderSelected_ShowsNameAndFormattedSize()
+    {
+        // Arrange
+        var fakeEngine = new FakeScanEngine();
+        var cache = new InMemoryScanCache();
+        using var scanService = new ScanService(fakeEngine, cache);
+        var driveService = new FakeDriveService();
+        var launcher = new FakeFileSystemLauncher();
+        var locService = new FakeLocalizationService();
+        var vm = new MainViewModel(scanService, driveService, launcher, cache, locService);
+
+        var folderPath = "C:\\Windows";
+
+        // Act
+        await vm.StartScanAsync(folderPath);
+
+        // Assert (REQ-QS-020)
+        Assert.True(vm.HasCurrentPath);
+        Assert.Equal("Windows", vm.CurrentDisplayName);
+        Assert.Equal("📁", vm.CurrentRootIcon);
+        Assert.Equal("(1.00 KB)", vm.FormattedSizeInParentheses);
+        Assert.Equal("1.00 KB", vm.FormattedTotalSize);
+    }
+
+    [Fact]
+    public void SynchronizeTreeSelection_ExpandsAncestorsAndSelectsTarget()
+    {
+        // Arrange
+        var fakeEngine = new FakeScanEngine();
+        var cache = new InMemoryScanCache();
+        using var scanService = new ScanService(fakeEngine, cache);
+        var driveService = new FakeDriveService();
+        var launcher = new FakeFileSystemLauncher();
+        var locService = new FakeLocalizationService();
+        var vm = new MainViewModel(scanService, driveService, launcher, cache, locService);
+
+        // Setup a deterministic hierarchy in cache for root C:\
+        // C:\ -> Projects -> QuickScan
+        var quickScanEntry = new FsEntry("C:\\Projects\\QuickScan", "QuickScan", 5000, true, null, null, 2, 0);
+        var projectsEntry = new FsEntry("C:\\Projects", "Projects", 10000, true, null, null, 10, 1, new List<FsEntry> { quickScanEntry });
+        var rootEntry = new FsEntry("C:\\", "C:\\", 100000, true, null, null, 50, 1, new List<FsEntry> { projectsEntry });
+
+        cache.Set(rootEntry);
+        cache.Set(projectsEntry);
+        cache.Set(quickScanEntry);
+
+        // Act: Synchronize to target folder
+        vm.SynchronizeTreeSelection("C:\\Projects\\QuickScan");
+
+        // Assert (REQ-QS-021)
+        Assert.NotNull(vm.SelectedNode);
+        Assert.Equal("QuickScan", vm.SelectedNode.Name);
+        Assert.True(vm.SelectedNode.IsSelected);
+
+        // Root C:\ and parent Projects must both be expanded
+        var rootNode = vm.ExplorerRoots[0];
+        Assert.True(rootNode.IsExpanded);
+
+        var projectsNode = rootNode.Children[0];
+        Assert.True(projectsNode.IsExpanded);
+    }
+
+    [Fact]
+    public void SynchronizeTreeSelection_ClearsPreviousSelectionWhenSwitchingFolders()
+    {
+        // Arrange
+        var fakeEngine = new FakeScanEngine();
+        var cache = new InMemoryScanCache();
+        using var scanService = new ScanService(fakeEngine, cache);
+        var driveService = new FakeDriveService();
+        var launcher = new FakeFileSystemLauncher();
+        var locService = new FakeLocalizationService();
+        var vm = new MainViewModel(scanService, driveService, launcher, cache, locService);
+
+        var folderA = new FsEntry("C:\\FolderA", "FolderA", 1000, true, null, null, 1, 0);
+        var folderB = new FsEntry("C:\\FolderB", "FolderB", 2000, true, null, null, 1, 0);
+        var rootEntry = new FsEntry("C:\\", "C:\\", 10000, true, null, null, 2, 2, new List<FsEntry> { folderA, folderB });
+
+        cache.Set(rootEntry);
+        cache.Set(folderA);
+        cache.Set(folderB);
+
+        // Act 1: Select FolderA
+        vm.SynchronizeTreeSelection("C:\\FolderA");
+        var nodeA = vm.SelectedNode;
+        Assert.NotNull(nodeA);
+        Assert.True(nodeA.IsSelected);
+        Assert.Equal("FolderA", nodeA.Name);
+
+        // Act 2: Switch to FolderB
+        vm.SynchronizeTreeSelection("C:\\FolderB");
+        var nodeB = vm.SelectedNode;
+        Assert.NotNull(nodeB);
+        Assert.True(nodeB.IsSelected);
+        Assert.Equal("FolderB", nodeB.Name);
+
+        // Assert: FolderA must be deselected, only FolderB selected
+        Assert.False(nodeA.IsSelected);
+    }
+
+    [Fact]
+    public async Task NavigateToItemAsync_WhenDirectoryItem_StartsScanForDirectory()
+    {
+        // Arrange
+        var fakeEngine = new FakeScanEngine();
+        var cache = new InMemoryScanCache();
+        using var scanService = new ScanService(fakeEngine, cache);
+        var driveService = new FakeDriveService();
+        var launcher = new FakeFileSystemLauncher();
+        var locService = new FakeLocalizationService();
+        var vm = new MainViewModel(scanService, driveService, launcher, cache, locService);
+
+        var dirEntry = new FsEntry("C:\\SubDir", "SubDir", 4096, true, null, null, 5, 1);
+        var barItem = new BarItemViewModel(dirEntry, 10000, 10000);
+
+        // Act: Navigate to directory (single click)
+        await vm.NavigateToItemAsync(barItem);
+
+        // Assert
+        Assert.Equal(1, fakeEngine.ScanCount);
+        Assert.Equal("C:\\SubDir", vm.CurrentPath);
+    }
 }
+
+

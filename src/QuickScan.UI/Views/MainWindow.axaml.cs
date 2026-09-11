@@ -64,10 +64,28 @@ public partial class MainWindow : Window
                 e.Handled = true;
             }
         }
-        // Enter: Scan selected node if present
-        else if (e.Key == Key.Enter && vm.SelectedNode is not null && !string.IsNullOrWhiteSpace(vm.SelectedNode.Path))
+        // Enter: Navigate to selected item in main chart or scan selected node in tree
+        else if (e.Key == Key.Enter)
         {
-            _ = vm.StartScanAsync(vm.SelectedNode.Path);
+            if (BarListBox.SelectedItem is BarItemViewModel barItem)
+            {
+                _ = vm.NavigateToItemAsync(barItem);
+                e.Handled = true;
+            }
+            else if (vm.SelectedNode is not null && !string.IsNullOrWhiteSpace(vm.SelectedNode.Path))
+            {
+                _ = vm.StartScanAsync(vm.SelectedNode.Path);
+                e.Handled = true;
+            }
+        }
+    }
+
+    private void OnBarItemTapped(object? sender, TappedEventArgs e)
+    {
+        // Single tap / click navigates into directory or opens file details
+        if (sender is Control control && control.DataContext is BarItemViewModel item && DataContext is MainViewModel vm)
+        {
+            _ = vm.NavigateToItemAsync(item);
             e.Handled = true;
         }
     }
@@ -77,14 +95,17 @@ public partial class MainWindow : Window
         if (DataContext is MainViewModel vm && BarListBox.SelectedItem is BarItemViewModel item)
         {
             _ = vm.NavigateToItemAsync(item);
+            e.Handled = true;
         }
     }
 
     private void OnTreeNodeTapped(object? sender, TappedEventArgs e)
     {
-        // Single tap on folder or drive name initiates scan
+        // Single tap on folder or drive name initiates scan and marks node
         if (sender is Control control && control.DataContext is ExplorerNodeViewModel node && DataContext is MainViewModel vm)
         {
+            vm.SelectedNode = node;
+            node.IsSelected = true;
             _ = vm.StartScanAsync(node.Path);
             e.Handled = true;
         }

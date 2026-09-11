@@ -168,15 +168,15 @@ All features and system modifications must adhere to the Given-When-Then accepta
 - **Out of Scope**: Circular treemap charts or pie charts.
 
 ### REQ-QS-014: Chart Directory Diving & Upward Navigation
-- **User Story**: As a user, I want to click into folders in the chart to inspect their subdirectories, and navigate back up easily.
+- **User Story**: As a user, I want to navigate into folders in the chart with a single click to inspect their subdirectories, and navigate back up easily.
 - **Acceptance Criteria**:
   - **Given** a directory row in the bar chart,
-  - **When** the user double-clicks the row (`NavigateToItemCommand`),
+  - **When** the user single-clicks or taps the row (`OnBarItemTapped`), or presses `Enter`,
   - **Then** the application navigates into that directory, scanning or retrieving it from cache.
   - **When** the user clicks the "Go Up" button (⬆) or presses `Alt + Up`,
   - **Then** the application navigates to the parent directory (`Directory.GetParent(CurrentPath)`).
   - **And** when at the root of a drive, the "Go Up" button is disabled (`CanGoUp == false`).
-- **Impact & Consistency Check**: Seamless two-way folder hierarchy traversal.
+- **Impact & Consistency Check**: Ergonomic single-click navigation requested by user.
 - **Out of Scope**: History back/forward browser-style button stack.
 
 ### REQ-QS-015: Multi-Criteria Column Sorting
@@ -253,3 +253,32 @@ All features and system modifications must adhere to the Given-When-Then accepta
   - **And** clicking "Close" dismisses the modal overlay.
 - **Impact & Consistency Check**: Fully compliant with Apache 2.0 distribution notice requirements.
 - **Out of Scope**: In-app online version update checker.
+
+---
+
+## 8. Selected Item Header & Explorer Synchronization
+
+### REQ-QS-020: Selected Folder Header Banner with Disk Space Metrics
+- **User Story**: As a user, I want the header banner above the main content area to display the selected folder's icon, name, and total disk space, so that I immediately see disk usage at a glance matching the reference application.
+- **Acceptance Criteria**:
+  - **Given** a scanned folder or selected item,
+  - **When** the main panel displays its content,
+  - **Then** the header banner displays the item icon (`📁` / `📄`), the folder/file name in bold, and the formatted disk space in parentheses (e.g. `📁 Windows (28.4 GB)`).
+  - **And** below the title row, the full path is displayed with an "Open in Explorer" button.
+  - **And** when no folder has been scanned yet (`CurrentPath` is empty), the banner is hidden.
+- **Impact & Consistency Check**: Matches the Rust reference header (`📁 {} ({})`).
+- **Out of Scope**: Editing folder names directly in the header banner.
+
+### REQ-QS-021: Explorer Dateibaum Active Folder Tracking (Tree Follows Selection)
+- **User Story**: As a user, I want the Dateibaum sidebar to automatically follow and visibly highlight the active folder navigated to in the main window, so that the tree view remains clearly synchronized with the current directory.
+- **Acceptance Criteria**:
+  - **Given** the Dateibaum sidebar and a directory navigated to in the main view (via scan, click on chart, drive selection, or Go Up),
+  - **When** navigation is initiated or completed,
+  - **Then** `SynchronizeTreeSelection` automatically expands all ancestor directory nodes along the path (`IsExpanded = true`).
+  - **And** all non-matching nodes are deselected (`ClearTreeSelection`).
+  - **And** the target directory node is marked as active (`IsSelected = true` and `SelectedNode = node`).
+  - **And** the active node is prominently styled with active background (`#313244`), accent border (`#89b4fa`), and bold accent text (`#89b4fa`).
+  - **When** a file is selected, the containing parent directory is synchronized and highlighted in the tree.
+- **Impact & Consistency Check**: Matches the Rust tree auto-follow behavior (`s.starts_with(path) && s != path`) and accent styling.
+- **Out of Scope**: Custom manual tree multi-selection.
+

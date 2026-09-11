@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -24,6 +25,8 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly ILocalizationService _localizationService;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCurrentPath))]
+    [NotifyPropertyChangedFor(nameof(CurrentDisplayName))]
     private string _currentPath = string.Empty;
 
     [ObservableProperty]
@@ -33,6 +36,9 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsChartVisible))]
     [NotifyPropertyChangedFor(nameof(FormattedCreatedAt))]
     [NotifyPropertyChangedFor(nameof(FormattedModifiedAt))]
+    [NotifyPropertyChangedFor(nameof(CurrentRootIcon))]
+    [NotifyPropertyChangedFor(nameof(CurrentDisplayName))]
+    [NotifyPropertyChangedFor(nameof(FormattedSizeInParentheses))]
     private FsEntry? _currentRoot;
 
     [ObservableProperty]
@@ -46,6 +52,16 @@ public sealed partial class MainViewModel : ObservableObject
     public bool IsChartVisible => CurrentRoot is not null && CurrentRoot.IsDirectory;
     public string FormattedCreatedAt => CurrentRoot?.CreatedAt?.LocalDateTime.ToString("G") ?? "-";
     public string FormattedModifiedAt => CurrentRoot?.ModifiedAt?.LocalDateTime.ToString("G") ?? "-";
+    public bool HasCurrentPath => !string.IsNullOrWhiteSpace(CurrentPath);
+    public string CurrentRootIcon => CurrentRoot is null || CurrentRoot.IsDirectory ? "📁" : "📄";
+    public string CurrentDisplayName => CurrentRoot is not null
+        ? CurrentRoot.Name
+        : (!string.IsNullOrWhiteSpace(CurrentPath)
+            ? (Path.GetFileName(CurrentPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)) is { Length: > 0 } name ? name : CurrentPath)
+            : string.Empty);
+    public string FormattedSizeInParentheses => !string.IsNullOrWhiteSpace(FormattedTotalSize) && FormattedTotalSize != "0 B"
+        ? $"({FormattedTotalSize})"
+        : (CurrentRoot is not null ? $"({FormattedTotalSize})" : string.Empty);
 
     [ObservableProperty]
     private string _statusText = string.Empty;
@@ -69,6 +85,7 @@ public sealed partial class MainViewModel : ObservableObject
     private bool _canGoUp;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FormattedSizeInParentheses))]
     private string _formattedTotalSize = "0 B";
 
     [ObservableProperty]
@@ -165,6 +182,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         CurrentPath = path;
         UpdateCanGoUp();
+        SynchronizeTreeSelection(path);
         await _scanService.StartScanAsync(path, forceScan: false).ConfigureAwait(true);
     }
 
@@ -230,6 +248,12 @@ public sealed partial class MainViewModel : ObservableObject
             TotalFolders = 0;
             UpdateCanGoUp();
             UpdateBarItems();
+
+            var parentDir = Directory.GetParent(item.Path)?.FullName;
+            if (!string.IsNullOrWhiteSpace(parentDir))
+            {
+                SynchronizeTreeSelection(parentDir);
+            }
         }
     }
 
@@ -303,9 +327,21 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
+    private static void RunOnUIThread(Action action)
+    {
+        if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+        {
+            action();
+        }
+        else
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(action);
+        }
+    }
+
     private void OnScanningStateChanged(bool scanning)
     {
-        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        RunOnUIThread(() =>
         {
             IsScanning = scanning;
             if (!scanning)
@@ -318,7 +354,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void OnProgressChanged(ScanProgress progress)
     {
-        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        RunOnUIThread(() =>
         {
             CurrentScanningPath = progress.CurrentPath;
             StatusText = $"{_localizationService.GetString("Status.Scanning")} {progress.FoldersScanned:N0} folders, {progress.FilesScanned:N0} files ({ByteSizeFormatter.Format(progress.BytesScanned)})";
@@ -327,7 +363,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void OnScanCompleted(FsEntry root)
     {
-        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        RunOnUIThread(() =>
         {
             CurrentRoot = root;
             CurrentPath = root.Path;
@@ -336,7 +372,122 @@ public sealed partial class MainViewModel : ObservableObject
             TotalFolders = root.DirectoryCount;
             UpdateCanGoUp();
             UpdateBarItems();
+            SynchronizeTreeSelection(root.Path);
         });
+    }
+
+    /// <summary>
+    /// Synchronizes the explorer tree selection with the specified path, expanding all ancestor nodes.
+    /// </summary>
+    public void SynchronizeTreeSelection(string? targetPath)
+    {
+        if (string.IsNullOrWhiteSpace(targetPath))
+        {
+            return;
+        }
+
+        try
+        {
+            var normalizedTarget = NormalizePath(targetPath);
+
+            // Deselect all existing nodes to guarantee a clean single selection
+            ClearTreeSelection(ExplorerRoots);
+
+            foreach (var root in ExplorerRoots)
+            {
+                var normalizedRoot = NormalizePath(root.Path);
+                if (IsSameOrAncestor(normalizedRoot, normalizedTarget))
+                {
+                    var found = FindAndSelectNode(root, normalizedTarget);
+                    if (found is not null)
+                    {
+                        SelectedNode = found;
+                        found.IsSelected = true;
+                    }
+                    break;
+                }
+            }
+        }
+        catch
+        {
+            // Ignore path normalization or traversal exceptions
+        }
+    }
+
+    private static void ClearTreeSelection(IEnumerable<ExplorerNodeViewModel> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.IsSelected)
+            {
+                node.IsSelected = false;
+            }
+            if (node.Children.Count > 0)
+            {
+                ClearTreeSelection(node.Children);
+            }
+        }
+    }
+
+    private static string NormalizePath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return string.Empty;
+        }
+
+        var fullPath = Path.GetFullPath(path);
+        var root = Path.GetPathRoot(fullPath);
+        if (string.Equals(fullPath, root, StringComparison.OrdinalIgnoreCase))
+        {
+            return fullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        }
+
+        return fullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+    }
+
+    private static bool IsSameOrAncestor(string candidateAncestor, string targetPath)
+    {
+        var normAncestor = NormalizePath(candidateAncestor);
+        var normTarget = NormalizePath(targetPath);
+
+        if (string.Equals(normAncestor, normTarget, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        var prefix = normAncestor.EndsWith(Path.DirectorySeparatorChar)
+            ? normAncestor
+            : normAncestor + Path.DirectorySeparatorChar;
+
+        return normTarget.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static ExplorerNodeViewModel? FindAndSelectNode(ExplorerNodeViewModel current, string normalizedTarget)
+    {
+        var currentNorm = NormalizePath(current.Path);
+        if (string.Equals(currentNorm, normalizedTarget, StringComparison.OrdinalIgnoreCase))
+        {
+            return current;
+        }
+
+        // Expand current ancestor node so its children are loaded
+        current.IsExpanded = true;
+
+        foreach (var child in current.Children)
+        {
+            var childNorm = NormalizePath(child.Path);
+            if (IsSameOrAncestor(childNorm, normalizedTarget))
+            {
+                var matched = FindAndSelectNode(child, normalizedTarget);
+                if (matched is not null)
+                {
+                    return matched;
+                }
+            }
+        }
+
+        return null;
     }
 
     private void UpdateCanGoUp()
