@@ -19,6 +19,7 @@
     <x:String x:Key="Dialog.About.Title">Über QuickScan</x:String>
     <x:String x:Key="Dialog.About.Description">Ein moderner, interaktiver Speicherplatz-Analysator, entwickelt mit C# 14, .NET 10 und Avalonia UI.</x:String>
     <x:String x:Key="Dialog.About.Author">Autor: Heino Stömmer</x:String>
+    <x:String x:Key="Dialog.About.Version">Version</x:String>
     <x:String x:Key="Dialog.About.License">Lizenz: Apache License 2.0</x:String>
     <x:String x:Key="Dialog.About.Close">Schließen</x:String>
     <x:String x:Key="Tooltip.GoUp">Übergeordneter Ordner (Alt+Nach oben)</x:String>

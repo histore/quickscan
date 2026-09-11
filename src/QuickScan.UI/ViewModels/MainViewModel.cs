@@ -108,6 +108,21 @@ public sealed partial class MainViewModel : ObservableObject
     public ObservableCollection<ExplorerNodeViewModel> ExplorerRoots { get; } = new();
 
     /// <summary>
+    /// Gets the application version formatted as vMajor.Minor.Build (e.g. v0.1.0).
+    /// </summary>
+    public string AppVersion { get; } = GetAppVersion();
+
+    private static string GetAppVersion()
+    {
+        var version = typeof(MainViewModel).Assembly.GetName().Version;
+        if (version is not null)
+        {
+            return $"v{version.Major}.{version.Minor}.{Math.Max(0, version.Build)}";
+        }
+        return "v0.1.0";
+    }
+
+    /// <summary>
     /// Action injected by the View to request an interactive folder selection dialog.
     /// </summary>
     public Func<Task<string?>>? RequestFolderPicker { get; set; }

@@ -241,17 +241,18 @@ All features and system modifications must adhere to the Given-When-Then accepta
 - **Out of Scope**: CPU and RAM performance graphs in the status bar.
 
 ### REQ-QS-019: Modal About Dialog & Legal Licensing
-- **User Story**: As a user or auditor, I want access to author information, license terms, and repository links, so that software provenance and open-source terms are verifiable.
+- **User Story**: As a user or auditor, I want access to application version, author information, license terms, and repository links, so that software provenance, versioning, and open-source terms are verifiable.
 - **Acceptance Criteria**:
   - **Given** the main window,
   - **When** the user clicks the "About" button (`ToggleAboutDialogCommand`),
   - **Then** a modal dialog overlay appears displaying:
     - Title: QuickScan
+    - Version: formatted as `v0.0.0` (e.g., `v0.1.0`)
     - Author: Heino Stömmer
     - License: Apache License 2.0 (referencing `LICENSE` file)
     - Repository: `github.com/histore/quickscan`
   - **And** clicking "Close" dismisses the modal overlay.
-- **Impact & Consistency Check**: Fully compliant with Apache 2.0 distribution notice requirements.
+- **Impact & Consistency Check**: Fully compliant with Apache 2.0 distribution notice requirements and SemVer version display standards.
 - **Out of Scope**: In-app online version update checker.
 
 ---

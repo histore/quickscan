@@ -365,6 +365,26 @@ public sealed class MainViewModelTests
         Assert.True(vm.SelectedNode.IsSelected);
         Assert.False(vm.IsSynchronizingSelection);
     }
+
+    [Fact]
+    public void AppVersion_MatchesSemVerFormatWithVPrefix()
+    {
+        // Arrange
+        var fakeEngine = new FakeScanEngine();
+        var cache = new InMemoryScanCache();
+        using var scanService = new ScanService(fakeEngine, cache);
+        var driveService = new FakeDriveService();
+        var launcher = new FakeFileSystemLauncher();
+        var locService = new FakeLocalizationService();
+
+        // Act
+        var vm = new MainViewModel(scanService, driveService, launcher, cache, locService);
+
+        // Assert: Format must be v0.0.0 (e.g. v0.1.0)
+        Assert.NotNull(vm.AppVersion);
+        Assert.Matches(@"^v\d+\.\d+\.\d+$", vm.AppVersion);
+        Assert.Equal("v0.1.0", vm.AppVersion);
+    }
 }
 
 
