@@ -1,0 +1,411 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:QuickScan.UI.ViewModels"
+        xmlns:conv="using:QuickScan.UI.Converters"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1050" d:DesignHeight="700"
+        x:Class="QuickScan.UI.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="QuickScan"
+        Width="1050" Height="720"
+        MinWidth="850" MinHeight="600"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Resources>
+        <conv:PercentageWidthConverter x:Key="PercentageWidthConverter" />
+    </Window.Resources>
+
+    <Window.Styles>
+        <Style Selector="Button">
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="ListBoxItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,2" />
+            <Setter Property="CornerRadius" Value="6" />
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <!-- Top Toolbar Panel -->
+        <Border Grid.Row="0" Background="#181825" BorderBrush="#313244" BorderThickness="0,0,0,1" Padding="12,8">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto,Auto">
+                <!-- App Brand / Logo -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock Text="🚀 QuickScan" FontWeight="Bold" FontSize="18" Foreground="#89b4fa" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Sidebar Toggle (F9) -->
+                <Button Grid.Column="1" Command="{Binding ToggleSidebarCommand}"
+                        ToolTip.Tip="{DynamicResource Tooltip.ToggleSidebar}"
+                        Margin="0,0,8,0" Padding="8,6">
+                    <TextBlock Text="📁 ⇄" FontSize="14" />
+                </Button>
+
+                <!-- Select Folder Button -->
+                <Button Grid.Column="2" Command="{Binding SelectFolderCommand}"
+                        Content="{DynamicResource Button.SelectFolder}"
+                        IsEnabled="{Binding !IsScanning}"
+                        Margin="0,0,8,0" />
+
+                <!-- Refresh Button -->
+                <Button Grid.Column="3" Command="{Binding RefreshCommand}"
+                        Content="{DynamicResource Button.Refresh}"
+                        IsEnabled="{Binding !IsScanning}"
+                        Margin="0,0,8,0" />
+
+                <!-- Go Up Button -->
+                <Button Grid.Column="4" Command="{Binding GoUpCommand}"
+                        ToolTip.Tip="{DynamicResource Tooltip.GoUp}"
+                        IsEnabled="{Binding CanGoUp}"
+                        Margin="0,0,8,0">
+                    <TextBlock Text="⬆" FontWeight="Bold" />
+                </Button>
+
+                <!-- Drive Selection Buttons -->
+                <ItemsControl Grid.Column="5" ItemsSource="{Binding Drives}" VerticalAlignment="Center" Margin="8,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="4" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Content="{Binding RootPath}"
+                                    Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).SelectDriveCommand}"
+                                    CommandParameter="{Binding}"
+                                    Padding="8,4" FontSize="12"
+                                    Background="#313244" Foreground="#cdd6f4" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Language Switcher -->
+                <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" Margin="8,0">
+                    <Button Content="EN" Command="{Binding SetLanguageCommand}" CommandParameter="en" Padding="6,3" FontSize="11" />
+                    <Button Content="DE" Command="{Binding SetLanguageCommand}" CommandParameter="de" Padding="6,3" FontSize="11" />
+                </StackPanel>
+
+                <!-- About Button -->
+                <Button Grid.Column="7" Command="{Binding ToggleAboutDialogCommand}"
+                        Content="{DynamicResource Button.About}"
+                        Margin="8,0,0,0" />
+            </Grid>
+        </Border>
+
+        <!-- Main Body: Sidebar + File Chart -->
+        <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,*">
+            <!-- Sidebar Panel -->
+            <Border Grid.Column="0" Width="260" Background="#11111b" BorderBrush="#313244" BorderThickness="0,0,1,0"
+                    IsVisible="{Binding IsSidebarVisible}">
+                <Grid RowDefinitions="Auto,*">
+                    <Border Grid.Row="0" Padding="12,10" BorderBrush="#313244" BorderThickness="0,0,0,1">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Text="{DynamicResource Header.Explorer}" FontWeight="Bold" FontSize="15" Foreground="#cdd6f4" VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Command="{Binding ScanSelectedNodeCommand}"
+                                    IsEnabled="{Binding SelectedNode, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                    ToolTip.Tip="{DynamicResource Button.ScanFolder}"
+                                    Padding="6,3" FontSize="12">
+                                <TextBlock Text="🔍" />
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <TreeView Grid.Row="1" ItemsSource="{Binding ExplorerRoots}" SelectedItem="{Binding SelectedNode}" Padding="6">
+                        <TreeView.Styles>
+                            <Style Selector="TreeViewItem" x:DataType="vm:ExplorerNodeViewModel">
+                                <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                                <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                            </Style>
+                        </TreeView.Styles>
+                        <TreeView.ItemTemplate>
+                            <TreeDataTemplate ItemsSource="{Binding Children}">
+                                <StackPanel Orientation="Horizontal" Spacing="6" Tapped="OnTreeNodeTapped" Cursor="Hand" Background="Transparent">
+                                    <StackPanel.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="{DynamicResource Button.ScanFolder}"
+                                                      Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).StartScanCommand}"
+                                                      CommandParameter="{Binding Path}" />
+                                            <MenuItem Header="{DynamicResource Button.Open}"
+                                                      Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).OpenInExplorerCommand}"
+                                                      CommandParameter="{Binding Path}" />
+                                        </ContextMenu>
+                                    </StackPanel.ContextMenu>
+                                    <TextBlock Text="{Binding Icon}" FontSize="13" />
+                                    <TextBlock Text="{Binding Name}" FontSize="13" Foreground="#cdd6f4" />
+                                </StackPanel>
+                            </TreeDataTemplate>
+                        </TreeView.ItemTemplate>
+                    </TreeView>
+                </Grid>
+            </Border>
+
+            <!-- Grid Splitter -->
+            <GridSplitter Grid.Column="1" Width="4" Background="#313244" ResizeDirection="Columns"
+                          IsVisible="{Binding IsSidebarVisible}" />
+
+            <!-- Main Content Area -->
+            <Grid Grid.Column="2" RowDefinitions="Auto,Auto,*" Background="#1e1e2e">
+                <!-- Current Path Bar -->
+                <Border Grid.Row="0" Background="#181825" BorderBrush="#313244" BorderThickness="0,0,0,1" Padding="12,8">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="{Binding CurrentPath}" FontWeight="SemiBold" FontSize="14"
+                                   Foreground="#89b4fa" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Command="{Binding OpenInExplorerCommand}" CommandParameter="{Binding CurrentPath}"
+                                Content="{DynamicResource Button.Open}" FontSize="11" Padding="8,4" Margin="8,0,0,0" />
+                    </Grid>
+                </Border>
+
+                <!-- Sorting Column Header -->
+                <Border Grid.Row="1" Background="#181825" BorderBrush="#313244" BorderThickness="0,0,0,1" Padding="12,6"
+                        IsVisible="{Binding IsChartVisible}">
+                    <Grid ColumnDefinitions="*,130,100,100">
+                        <Button Grid.Column="0" Command="{Binding SortCommand}" CommandParameter="name"
+                                Background="Transparent" Padding="0" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <TextBlock Text="{DynamicResource Header.Name}" FontWeight="Bold" Foreground="#a6adc8" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Grid.Column="1" Command="{Binding SortCommand}" CommandParameter="size"
+                                Background="Transparent" Padding="0" HorizontalAlignment="Right" Margin="0,0,12,0">
+                            <TextBlock Text="{DynamicResource Header.Size}" FontWeight="Bold" Foreground="#a6adc8" />
+                        </Button>
+
+                        <TextBlock Grid.Column="2" Text="{DynamicResource Header.Percentage}" FontWeight="Bold"
+                                   Foreground="#a6adc8" HorizontalAlignment="Right" Margin="0,0,12,0" />
+
+                        <Button Grid.Column="3" Command="{Binding SortCommand}" CommandParameter="items"
+                                Background="Transparent" Padding="0" HorizontalAlignment="Right" Margin="0,0,12,0">
+                            <TextBlock Text="{DynamicResource Header.Items}" FontWeight="Bold" Foreground="#a6adc8" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Interactive Bar Chart List & File Details -->
+                <Grid Grid.Row="2">
+                    <!-- Empty / Initial States -->
+                    <TextBlock Text="{DynamicResource Status.SelectToStart}"
+                               IsVisible="{Binding ShowInitialPrompt}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               FontSize="16" Foreground="#6c7086" />
+
+                    <TextBlock Text="{DynamicResource Status.EmptyFolder}"
+                               IsVisible="{Binding ShowEmptyFolderMessage}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               FontSize="16" Foreground="#6c7086" />
+
+                    <!-- File Details View -->
+                    <Border IsVisible="{Binding IsFileDetailsVisible}" Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Border Background="#181825" BorderBrush="#313244" BorderThickness="1"
+                                CornerRadius="12" Width="480" Padding="24" BoxShadow="0 4 24 #30000000">
+                            <StackPanel Spacing="16">
+                                <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
+                                    <TextBlock Text="📄" FontSize="24" VerticalAlignment="Center" />
+                                    <TextBlock Text="{DynamicResource Header.FileDetails}" FontWeight="Bold" FontSize="18" Foreground="#89b4fa" VerticalAlignment="Center" />
+                                </StackPanel>
+
+                                <Separator Background="#313244" Height="1" />
+
+                                <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*" Margin="8,4">
+                                    <Grid.Styles>
+                                        <Style Selector="TextBlock.label">
+                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                            <Setter Property="Foreground" Value="#a6adc8" />
+                                            <Setter Property="Margin" Value="0,6,16,6" />
+                                        </Style>
+                                        <Style Selector="TextBlock.value">
+                                            <Setter Property="Foreground" Value="#cdd6f4" />
+                                            <Setter Property="Margin" Value="0,6,0,6" />
+                                            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                                        </Style>
+                                    </Grid.Styles>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{DynamicResource Header.Name}" Classes="label" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding CurrentRoot.Name}" Classes="value" FontWeight="Bold" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{DynamicResource Label.Path}" Classes="label" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding CurrentPath}" Classes="value" ToolTip.Tip="{Binding CurrentPath}" />
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{DynamicResource Header.Size}" Classes="label" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding FormattedTotalSize}" Classes="value" Foreground="#f9e2af" FontWeight="Bold" />
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="{DynamicResource Label.Created}" Classes="label" />
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding FormattedCreatedAt}" Classes="value" />
+
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="{DynamicResource Label.Modified}" Classes="label" />
+                                    <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding FormattedModifiedAt}" Classes="value" />
+                                </Grid>
+
+                                <Separator Background="#313244" Height="1" />
+
+                                <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center" Margin="0,8,0,0">
+                                    <Button Command="{Binding OpenCurrentFileCommand}"
+                                            Content="{DynamicResource Button.OpenFile}"
+                                            Background="#89b4fa" Foreground="#11111b"
+                                            FontWeight="Bold" Padding="20,8" />
+                                    <Button Command="{Binding OpenInExplorerCommand}" CommandParameter="{Binding CurrentPath}"
+                                            Content="{DynamicResource Button.Open}"
+                                            Padding="16,8" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </Border>
+
+                    <!-- Bar Chart Items -->
+                    <ListBox x:Name="BarListBox"
+                             ItemsSource="{Binding BarItems}"
+                             IsVisible="{Binding IsChartVisible}"
+                             Background="Transparent"
+                             DoubleTapped="OnBarItemDoubleTapped"
+                             Padding="8">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:BarItemViewModel">
+                                <Border x:Name="ItemContainer"
+                                        Height="36" Margin="0,2"
+                                        CornerRadius="6"
+                                        Background="#181825"
+                                        BorderBrush="#313244"
+                                        BorderThickness="1"
+                                        ToolTip.Tip="{Binding TooltipDetails}"
+                                        ClipToBounds="True">
+                                    <Border.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="{DynamicResource Button.Open}"
+                                                      Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).OpenInExplorerCommand}"
+                                                      CommandParameter="{Binding Path}" />
+                                        </ContextMenu>
+                                    </Border.ContextMenu>
+
+                                    <Grid>
+                                        <!-- Proportional Colored Usage Bar -->
+                                        <Border HorizontalAlignment="Left"
+                                                Background="{Binding BarBrush}"
+                                                BorderBrush="{Binding BorderBrush}"
+                                                BorderThickness="0,0,1,0"
+                                                CornerRadius="5,0,0,5">
+                                            <Border.Width>
+                                                <MultiBinding Converter="{StaticResource PercentageWidthConverter}">
+                                                    <Binding Path="Bounds.Width" ElementName="ItemContainer" />
+                                                    <Binding Path="BarWidthPercentage" />
+                                                </MultiBinding>
+                                            </Border.Width>
+                                        </Border>
+
+                                        <!-- Item Label & Metrics Row -->
+                                        <Grid ColumnDefinitions="*,130,100,100" Margin="12,0" VerticalAlignment="Center">
+                                            <!-- Name & Icon -->
+                                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                                                <TextBlock Text="{Binding Icon}" FontSize="14" VerticalAlignment="Center" />
+                                                <TextBlock Text="{Binding Name}" FontWeight="Medium" FontSize="13"
+                                                           Foreground="#cdd6f4" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+
+                                            <!-- Size -->
+                                            <TextBlock Grid.Column="1" Text="{Binding FormattedSize}"
+                                                       FontWeight="SemiBold" FontSize="13" Foreground="#f9e2af"
+                                                       HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                       Margin="0,0,12,0" />
+
+                                            <!-- Percentage -->
+                                            <TextBlock Grid.Column="2" Text="{Binding FormattedPercentage}"
+                                                       FontSize="12" Foreground="#a6adc8"
+                                                       HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                       Margin="0,0,12,0" />
+
+                                            <!-- Item counts -->
+                                            <TextBlock Grid.Column="3"
+                                                       Text="{Binding FileCount, StringFormat='{}{0:N0}'}"
+                                                       FontSize="12" Foreground="#a6adc8"
+                                                       HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                       Margin="0,0,12,0" />
+                                        </Grid>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <!-- Bottom Status Bar -->
+        <Border Grid.Row="2" Background="#11111b" BorderBrush="#313244" BorderThickness="0,1,0,0" Padding="12,6">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                <!-- Scanning Indicator -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <ProgressBar IsIndeterminate="True" Width="80" Height="4" IsVisible="{Binding IsScanning}" />
+                    <TextBlock Text="{Binding StatusText}" FontSize="12" Foreground="#a6adc8" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Current Path Scan Feedback -->
+                <TextBlock Grid.Column="1" Text="{Binding CurrentScanningPath}"
+                           IsVisible="{Binding IsScanning}"
+                           FontSize="11" Foreground="#6c7086"
+                           TextTrimming="CharacterEllipsis"
+                           Margin="16,0" VerticalAlignment="Center" />
+
+                <!-- Cancel Button -->
+                <Button Grid.Column="2" Command="{Binding CancelScanCommand}"
+                        Content="{DynamicResource Button.Cancel}"
+                        IsVisible="{Binding IsScanning}"
+                        Background="#f38ba8" Foreground="#11111b"
+                        FontSize="11" Padding="8,3" Margin="8,0" />
+
+                <!-- Aggregate Statistics -->
+                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="{DynamicResource Label.Folders}" FontSize="12" Foreground="#6c7086" />
+                        <TextBlock Text=": " FontSize="12" Foreground="#6c7086" />
+                        <TextBlock Text="{Binding TotalFolders, StringFormat='{}{0:N0}'}" FontSize="12" FontWeight="SemiBold" Foreground="#cdd6f4" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="{DynamicResource Label.Files}" FontSize="12" Foreground="#6c7086" />
+                        <TextBlock Text=": " FontSize="12" Foreground="#6c7086" />
+                        <TextBlock Text="{Binding TotalFiles, StringFormat='{}{0:N0}'}" FontSize="12" FontWeight="SemiBold" Foreground="#cdd6f4" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="{DynamicResource Header.Size}" FontSize="12" Foreground="#6c7086" />
+                        <TextBlock Text=": " FontSize="12" Foreground="#6c7086" />
+                        <TextBlock Text="{Binding FormattedTotalSize}" FontSize="12" FontWeight="Bold" Foreground="#89b4fa" />
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- About Modal Dialog Overlay -->
+        <Border Grid.Row="0" Grid.RowSpan="3" Background="#80000000" IsVisible="{Binding IsAboutDialogOpen}">
+            <Border Background="#1e1e2e" BorderBrush="#89b4fa" BorderThickness="1"
+                    CornerRadius="12" Width="480" VerticalAlignment="Center" HorizontalAlignment="Center"
+                    Padding="24" BoxShadow="0 8 32 #50000000">
+                <StackPanel Spacing="16">
+                    <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+                        <TextBlock Text="🚀" FontSize="28" VerticalAlignment="Center" />
+                        <TextBlock Text="{DynamicResource Dialog.About.Title}" FontWeight="Bold" FontSize="20" Foreground="#89b4fa" VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <TextBlock Text="{DynamicResource Dialog.About.Description}"
+                               TextWrapping="Wrap" Foreground="#cdd6f4" FontSize="13" TextAlignment="Center" />
+
+                    <Separator Background="#313244" Height="1" />
+
+                    <StackPanel Spacing="6" HorizontalAlignment="Center">
+                        <TextBlock Text="{DynamicResource Dialog.About.Author}" FontSize="13" Foreground="#a6adc8" />
+                        <TextBlock Text="{DynamicResource Dialog.About.License}" FontSize="13" Foreground="#a6adc8" />
+                        <TextBlock Text="Repository: github.com/histore/quickscan" FontSize="13" Foreground="#89b4fa" />
+                    </StackPanel>
+
+                    <Button Command="{Binding ToggleAboutDialogCommand}"
+                            Content="{DynamicResource Dialog.About.Close}"
+                            HorizontalAlignment="Center"
+                            Padding="24,8" Margin="0,8,0,0" />
+                </StackPanel>
+            </Border>
+        </Border>
+    </Grid>
+</Window>

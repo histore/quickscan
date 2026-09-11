@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/QuickScan.Application/QuickScan.Application.csproj" />
+    <Project Path="src/QuickScan.Domain/QuickScan.Domain.csproj" />
+    <Project Path="src/QuickScan.Infrastructure/QuickScan.Infrastructure.csproj" />
+    <Project Path="src/QuickScan.UI/QuickScan.UI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/QuickScan.Tests/QuickScan.Tests.csproj" />
+  </Folder>
+</Solution>
