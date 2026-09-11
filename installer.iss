@@ -1,12 +1,12 @@
 ; Inno Setup Script for QuickScan
 #ifndef MyAppVersion
-#define MyAppVersion "0.1.0"
+#define MyAppVersion "0.1.1"
 #endif
 
 #define MyAppName "QuickScan"
 #define MyAppPublisher "QuickScan Open Source Contributors"
 #define MyAppURL "https://github.com/histore/quickscan"
-#define MyAppExeName "QuickScan.UI.exe"
+#define MyAppExeName "quickscan.exe"
 
 [Setup]
 AppId={{9B7E3721-5F41-47A4-89C3-289D52B750EE}
