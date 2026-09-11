@@ -380,10 +380,10 @@ public sealed class MainViewModelTests
         // Act
         var vm = new MainViewModel(scanService, driveService, launcher, cache, locService);
 
-        // Assert: Format must be v0.0.0 (e.g. v0.1.0)
+        // Assert: Format must be v0.0.0 (e.g. v0.1.1)
         Assert.NotNull(vm.AppVersion);
         Assert.Matches(@"^v\d+\.\d+\.\d+$", vm.AppVersion);
-        Assert.Equal("v0.1.0", vm.AppVersion);
+        Assert.Equal("v0.1.1", vm.AppVersion);
     }
 }
 

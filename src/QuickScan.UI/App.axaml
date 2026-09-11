@@ -11,7 +11,7 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceInclude Source="avares://QuickScan.UI/Resources/Strings.en.axaml" />
+                <ResourceInclude Source="avares://quickscan/Resources/Strings.en.axaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

@@ -12,8 +12,8 @@ namespace QuickScan.UI.Services;
 /// </summary>
 public sealed class LocalizationService : ILocalizationService
 {
-    private static readonly Uri EnUri = new("avares://QuickScan.UI/Resources/Strings.en.axaml");
-    private static readonly Uri DeUri = new("avares://QuickScan.UI/Resources/Strings.de.axaml");
+    private static readonly Uri EnUri = new("avares://quickscan/Resources/Strings.en.axaml");
+    private static readonly Uri DeUri = new("avares://quickscan/Resources/Strings.de.axaml");
 
     private ResourceDictionary? _currentDictionary;
 
