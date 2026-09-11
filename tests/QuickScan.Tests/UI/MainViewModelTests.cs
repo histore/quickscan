@@ -298,6 +298,73 @@ public sealed class MainViewModelTests
         Assert.Equal(1, fakeEngine.ScanCount);
         Assert.Equal("C:\\SubDir", vm.CurrentPath);
     }
+
+    [Fact]
+    public async Task NavigateToItemAsync_WhenNavigatingToSubdirectory_SelectsSubdirectoryInTree()
+    {
+        // Arrange
+        var fakeEngine = new FakeScanEngine();
+        var cache = new InMemoryScanCache();
+        using var scanService = new ScanService(fakeEngine, cache);
+        var driveService = new FakeDriveService();
+        var launcher = new FakeFileSystemLauncher();
+        var locService = new FakeLocalizationService();
+        var vm = new MainViewModel(scanService, driveService, launcher, cache, locService);
+
+        var datenEntry = new FsEntry("C:\\daten", "daten", 5000, true, null, null, 2, 0);
+        var rootEntry = new FsEntry("C:\\", "C:\\", 100000, true, null, null, 50, 1, new List<FsEntry> { datenEntry });
+
+        cache.Set(rootEntry);
+        cache.Set(datenEntry);
+
+        // First scan root
+        await vm.StartScanAsync("C:\\");
+
+        Assert.NotNull(vm.SelectedNode);
+        Assert.Equal("C:\\", vm.SelectedNode.Path);
+        Assert.True(vm.SelectedNode.IsSelected);
+
+        // Act: User clicks on "daten" in the main list
+        var barItem = new BarItemViewModel(datenEntry, 100000, 100000);
+        await vm.NavigateToItemAsync(barItem);
+
+        // Assert
+        Assert.NotNull(vm.SelectedNode);
+        Assert.Equal("C:\\daten", vm.SelectedNode.Path);
+        Assert.True(vm.SelectedNode.IsSelected);
+    }
+
+    [Fact]
+    public void SynchronizeTreeSelection_WhenTargetAlreadySelected_PreservesSelectionWithoutResetting()
+    {
+        // Arrange
+        var fakeEngine = new FakeScanEngine();
+        var cache = new InMemoryScanCache();
+        using var scanService = new ScanService(fakeEngine, cache);
+        var driveService = new FakeDriveService();
+        var launcher = new FakeFileSystemLauncher();
+        var locService = new FakeLocalizationService();
+        var vm = new MainViewModel(scanService, driveService, launcher, cache, locService);
+
+        var subDir = new FsEntry("C:\\Projects", "Projects", 1000, true, null, null, 1, 0);
+        var rootEntry = new FsEntry("C:\\", "C:\\", 5000, true, null, null, 2, 1, new List<FsEntry> { subDir });
+        cache.Set(rootEntry);
+        cache.Set(subDir);
+
+        vm.SynchronizeTreeSelection("C:\\Projects");
+        var originalSelectedNode = vm.SelectedNode;
+        Assert.NotNull(originalSelectedNode);
+        Assert.True(originalSelectedNode.IsSelected);
+
+        // Act: Synchronize again to the exact same path
+        vm.SynchronizeTreeSelection("C:\\Projects");
+
+        // Assert: Same instance preserved, still selected, flag reset to false
+        Assert.NotNull(vm.SelectedNode);
+        Assert.Same(originalSelectedNode, vm.SelectedNode);
+        Assert.True(vm.SelectedNode.IsSelected);
+        Assert.False(vm.IsSynchronizingSelection);
+    }
 }
 
 

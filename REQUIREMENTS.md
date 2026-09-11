@@ -142,14 +142,14 @@ All features and system modifications must adhere to the Given-When-Then accepta
 - **Out of Scope**: Searching within collapsed tree nodes.
 
 ### REQ-QS-012: Single-Click Folder Name Scan Trigger
-- **User Story**: As a user, I want a single click on a folder name in the Dateibaum to start scanning that folder, while clicking the chevron only expands or collapses it.
+- **User Story**: As a user, I want a single click on a folder in the Dateibaum to start scanning that folder immediately, while clicking the chevron only expands or collapses it.
 - **Acceptance Criteria**:
   - **Given** the directory tree sidebar,
   - **When** the user clicks on the expander chevron (`>`),
   - **Then** the branch expands or collapses without starting a scan.
-  - **When** the user clicks on the name or icon of the folder (`OnTreeNodeTapped`),
-  - **Then** `StartScanAsync(node.Path)` is called and the scan begins immediately.
-- **Impact & Consistency Check**: Confirmed by user requirement for ergonomic one-click navigation.
+  - **When** the user clicks anywhere on the row (icon, name, or row background) of a tree node (`SelectionChanged` or `OnTreeNodeTapped`),
+  - **Then** the scan begins immediately on the very first click without requiring a second click.
+- **Impact & Consistency Check**: Fixes defect where first click on an unselected item only focused the control, requiring a second click to start scanning.
 - **Out of Scope**: Drag and drop reordering of tree nodes.
 
 ---
@@ -270,15 +270,15 @@ All features and system modifications must adhere to the Given-When-Then accepta
 - **Out of Scope**: Editing folder names directly in the header banner.
 
 ### REQ-QS-021: Explorer Dateibaum Active Folder Tracking (Tree Follows Selection)
-- **User Story**: As a user, I want the Dateibaum sidebar to automatically follow and visibly highlight the active folder navigated to in the main window, so that the tree view remains clearly synchronized with the current directory.
+- **User Story**: As a user, I want the Dateibaum sidebar to automatically follow and visibly highlight the active folder navigated to in the main window with a single unified highlight, so that the tree view remains clearly synchronized with the current directory without double borders.
 - **Acceptance Criteria**:
   - **Given** the Dateibaum sidebar and a directory navigated to in the main view (via scan, click on chart, drive selection, or Go Up),
   - **When** navigation is initiated or completed,
   - **Then** `SynchronizeTreeSelection` automatically expands all ancestor directory nodes along the path (`IsExpanded = true`).
   - **And** all non-matching nodes are deselected (`ClearTreeSelection`).
-  - **And** the target directory node is marked as active (`IsSelected = true` and `SelectedNode = node`).
-  - **And** the active node is prominently styled with active background (`#313244`), accent border (`#89b4fa`), and bold accent text (`#89b4fa`).
+  - **And** the target directory node is marked as active (`IsSelected = true` and `SelectedNode = node`), even when opening child folders from the main chart area.
+  - **And** exactly one uniform selection highlight is shown across the row (no duplicate inner/outer borders).
   - **When** a file is selected, the containing parent directory is synchronized and highlighted in the tree.
-- **Impact & Consistency Check**: Matches the Rust tree auto-follow behavior (`s.starts_with(path) && s != path`) and accent styling.
+- **Impact & Consistency Check**: Resolves double selection border artifact and missing child folder selection when drilling down from the main view.
 - **Out of Scope**: Custom manual tree multi-selection.
 

@@ -115,36 +115,45 @@
                         </Grid>
                     </Border>
 
-                    <TreeView Grid.Row="1" ItemsSource="{Binding ExplorerRoots}" SelectedItem="{Binding SelectedNode}" Padding="6">
+                    <TreeView x:Name="ExplorerTreeView"
+                              Grid.Row="1"
+                              ItemsSource="{Binding ExplorerRoots}"
+                              SelectedItem="{Binding SelectedNode}"
+                              SelectionChanged="OnTreeSelectionChanged"
+                              Padding="6">
+                        <TreeView.Resources>
+                            <SolidColorBrush x:Key="TreeViewItemBackground" Color="Transparent" />
+                            <SolidColorBrush x:Key="TreeViewItemBackgroundPointerOver" Color="#181825" />
+                            <SolidColorBrush x:Key="TreeViewItemBackgroundSelected" Color="#313244" />
+                            <SolidColorBrush x:Key="TreeViewItemBackgroundSelectedPointerOver" Color="#3a3c4e" />
+                            <SolidColorBrush x:Key="TreeViewItemForegroundSelected" Color="#89b4fa" />
+                            <SolidColorBrush x:Key="TreeViewItemForegroundSelectedPointerOver" Color="#89b4fa" />
+                        </TreeView.Resources>
                         <TreeView.Styles>
                             <Style Selector="TreeViewItem" x:DataType="vm:ExplorerNodeViewModel">
                                 <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
                                 <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                                <Setter Property="CornerRadius" Value="6" />
+                                <Setter Property="Margin" Value="0,1" />
+                                <Setter Property="MinHeight" Value="28" />
                             </Style>
                             <Style Selector="Border.treeNode">
                                 <Setter Property="Background" Value="Transparent" />
-                                <Setter Property="BorderThickness" Value="1" />
-                                <Setter Property="BorderBrush" Value="Transparent" />
-                            </Style>
-                            <Style Selector="Border.treeNode:pointerover">
-                                <Setter Property="Background" Value="#181825" />
-                            </Style>
-                            <Style Selector="Border.treeNode.selected">
-                                <Setter Property="Background" Value="#313244" />
-                                <Setter Property="BorderBrush" Value="#89b4fa" />
+                                <Setter Property="CornerRadius" Value="6" />
+                                <Setter Property="Padding" Value="6,4" />
+                                <Setter Property="HorizontalAlignment" Value="Stretch" />
                             </Style>
                             <Style Selector="TextBlock.treeNodeText">
                                 <Setter Property="Foreground" Value="#cdd6f4" />
                             </Style>
-                            <Style Selector="TextBlock.treeNodeText.selected">
+                            <Style Selector="TreeViewItem:selected TextBlock.treeNodeText">
                                 <Setter Property="Foreground" Value="#89b4fa" />
-                                <Setter Property="FontWeight" Value="Bold" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
                             </Style>
                         </TreeView.Styles>
                         <TreeView.ItemTemplate>
                             <TreeDataTemplate ItemsSource="{Binding Children}">
-                                <Border Classes="treeNode" Classes.selected="{Binding IsSelected}"
-                                        CornerRadius="6" Padding="6,4" Margin="0,1"
+                                <Border Classes="treeNode"
                                         Cursor="Hand" Tapped="OnTreeNodeTapped">
                                     <Border.ContextMenu>
                                         <ContextMenu>
@@ -159,7 +168,7 @@
                                     <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Icon}" FontSize="13" VerticalAlignment="Center" />
                                         <TextBlock Text="{Binding Name}" FontSize="13" VerticalAlignment="Center"
-                                                   Classes="treeNodeText" Classes.selected="{Binding IsSelected}" />
+                                                   Classes="treeNodeText" />
                                     </StackPanel>
                                 </Border>
                             </TreeDataTemplate>

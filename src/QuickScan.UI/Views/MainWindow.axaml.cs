@@ -99,15 +99,27 @@ public partial class MainWindow : Window
         }
     }
 
+    private void OnTreeSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (DataContext is MainViewModel vm && !vm.IsSynchronizingSelection)
+        {
+            if (e.AddedItems.Count > 0 && e.AddedItems[0] is ExplorerNodeViewModel node && !string.IsNullOrWhiteSpace(node.Path))
+            {
+                _ = vm.StartScanAsync(node.Path);
+            }
+        }
+    }
+
     private void OnTreeNodeTapped(object? sender, TappedEventArgs e)
     {
-        // Single tap on folder or drive name initiates scan and marks node
+        // Re-clicking an already selected tree node initiates scan
         if (sender is Control control && control.DataContext is ExplorerNodeViewModel node && DataContext is MainViewModel vm)
         {
-            vm.SelectedNode = node;
-            node.IsSelected = true;
-            _ = vm.StartScanAsync(node.Path);
-            e.Handled = true;
+            if (!string.IsNullOrWhiteSpace(node.Path))
+            {
+                _ = vm.StartScanAsync(node.Path);
+                e.Handled = true;
+            }
         }
     }
 }

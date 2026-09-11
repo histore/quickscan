@@ -100,6 +100,9 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private ExplorerNodeViewModel? _selectedNode;
 
+    [ObservableProperty]
+    private bool _isSynchronizingSelection;
+
     public ObservableCollection<BarItemViewModel> BarItems { get; } = new();
     public ObservableCollection<DriveItem> Drives { get; } = new();
     public ObservableCollection<ExplorerNodeViewModel> ExplorerRoots { get; } = new();
@@ -388,7 +391,15 @@ public sealed partial class MainViewModel : ObservableObject
 
         try
         {
+            IsSynchronizingSelection = true;
             var normalizedTarget = NormalizePath(targetPath);
+
+            // If the current SelectedNode already matches the target, ensure it stays selected without resetting
+            if (SelectedNode is not null && string.Equals(NormalizePath(SelectedNode.Path), normalizedTarget, StringComparison.OrdinalIgnoreCase))
+            {
+                SelectedNode.IsSelected = true;
+                return;
+            }
 
             // Deselect all existing nodes to guarantee a clean single selection
             ClearTreeSelection(ExplorerRoots);
@@ -401,8 +412,21 @@ public sealed partial class MainViewModel : ObservableObject
                     var found = FindAndSelectNode(root, normalizedTarget);
                     if (found is not null)
                     {
-                        SelectedNode = found;
                         found.IsSelected = true;
+                        SelectedNode = found;
+
+                        // Ensure UI container realization does not overwrite selection
+                        if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+                        {
+                            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                            {
+                                if (found is not null)
+                                {
+                                    found.IsSelected = true;
+                                    SelectedNode = found;
+                                }
+                            }, Avalonia.Threading.DispatcherPriority.Loaded);
+                        }
                     }
                     break;
                 }
@@ -411,6 +435,10 @@ public sealed partial class MainViewModel : ObservableObject
         catch
         {
             // Ignore path normalization or traversal exceptions
+        }
+        finally
+        {
+            IsSynchronizingSelection = false;
         }
     }
 
