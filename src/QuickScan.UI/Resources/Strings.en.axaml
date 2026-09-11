@@ -19,6 +19,7 @@
     <x:String x:Key="Dialog.About.Title">About QuickScan</x:String>
     <x:String x:Key="Dialog.About.Description">A modern, interactive disk space analyzer built with C# 14, .NET 10, and Avalonia UI.</x:String>
     <x:String x:Key="Dialog.About.Author">Author: Heino Stömmer</x:String>
+    <x:String x:Key="Dialog.About.Version">Version</x:String>
     <x:String x:Key="Dialog.About.License">License: Apache License 2.0</x:String>
     <x:String x:Key="Dialog.About.Close">Close</x:String>
     <x:String x:Key="Tooltip.GoUp">Go to parent directory (Alt+Up)</x:String>

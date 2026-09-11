@@ -462,6 +462,11 @@
                     <Separator Background="#313244" Height="1" />
 
                     <StackPanel Spacing="6" HorizontalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center">
+                            <TextBlock Text="{DynamicResource Dialog.About.Version}" FontSize="13" Foreground="#a6adc8" />
+                            <TextBlock Text=": " FontSize="13" Foreground="#a6adc8" />
+                            <TextBlock Text="{Binding AppVersion}" FontSize="13" FontWeight="SemiBold" Foreground="#89b4fa" />
+                        </StackPanel>
                         <TextBlock Text="{DynamicResource Dialog.About.Author}" FontSize="13" Foreground="#a6adc8" />
                         <TextBlock Text="{DynamicResource Dialog.About.License}" FontSize="13" Foreground="#a6adc8" />
                         <TextBlock Text="Repository: github.com/histore/quickscan" FontSize="13" Foreground="#89b4fa" />
