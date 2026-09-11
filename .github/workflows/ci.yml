@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  secret-scan:
+    name: Secret Scanning (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-and-test:
+    name: Build & Test (.NET 10 on Windows)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore Dependencies
+        run: dotnet restore QuickScan.slnx
+
+      - name: Audit NuGet Package Vulnerabilities (CVE Check)
+        shell: pwsh
+        run: dotnet list QuickScan.slnx package --vulnerable --include-transitive
+
+      - name: Build Solution
+        run: dotnet build QuickScan.slnx --configuration Release --no-restore
+
+      - name: Run Automated Tests
+        run: dotnet test tests/QuickScan.Tests/QuickScan.Tests.csproj --configuration Release --no-build --verbosity normal

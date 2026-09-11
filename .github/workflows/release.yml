@@ -1,0 +1,126 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-and-release:
+    name: Build & Package Windows Release
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify Tag is on main Branch
+        shell: pwsh
+        run: |
+          Write-Host "Verifying that tag '${{ github.ref_name }}' (commit ${{ github.sha }}) belongs to 'origin/main'..."
+          git merge-base --is-ancestor ${{ github.sha }} origin/main
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Release build aborted: Tag '${{ github.ref_name }}' was pushed on a non-main commit or branch. Releases must only be created from 'main'."
+            exit 1
+          }
+          Write-Host "Verification successful: Tag is an ancestor of or directly on 'origin/main'."
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setup Inno Setup
+        shell: pwsh
+        run: |
+          if (!(Get-Command iscc -ErrorAction SilentlyContinue) -and !(Test-Path "C:\Program Files (x86)\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup -y --no-progress
+          }
+          if (Test-Path "C:\Program Files (x86)\Inno Setup 6") {
+            echo "C:\Program Files (x86)\Inno Setup 6" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+
+      - name: Extract Tag Name
+        id: vars
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          Write-Output "TAG_NAME=$tag" >> $env:GITHUB_OUTPUT
+          Write-Host "Releasing version $tag"
+
+      - name: Run Automated Tests
+        run: dotnet test tests/QuickScan.Tests/QuickScan.Tests.csproj --configuration Release --verbosity normal
+
+      - name: Publish Single-File Executable (win-x64 Release, No Debug Info)
+        shell: pwsh
+        run: |
+          dotnet publish src/QuickScan.UI/QuickScan.UI.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:EnableCompressionInSingleFile=true `
+            -p:DebugType=None `
+            -p:DebugSymbols=false `
+            -o ./publish
+
+          # Ensure no debug symbol files remain
+          Get-ChildItem -Path ./publish -Recurse -Include *.pdb, *.xml | Remove-Item -Force -ErrorAction SilentlyContinue
+
+      - name: Build Inno Setup Installer
+        shell: pwsh
+        run: |
+          $cleanVersion = "${{ steps.vars.outputs.TAG_NAME }}".TrimStart('v')
+          iscc "/DMyAppVersion=$cleanVersion" installer.iss
+          $setupExe = "QuickScan-Setup-$cleanVersion.exe"
+          Write-Output "SETUP_EXE=dist/$setupExe" >> $env:GITHUB_OUTPUT
+        id: inno
+
+      - name: Create Portable Zip Archive (Self-Contained)
+        shell: pwsh
+        run: |
+          $zipName = "QuickScan-Portable-win-x64-${{ steps.vars.outputs.TAG_NAME }}.zip"
+          Compress-Archive -Path ./publish/* -DestinationPath "./$zipName"
+          Write-Output "ZIP_NAME=$zipName" >> $env:GITHUB_OUTPUT
+        id: package
+
+      - name: Publish Single-File Executable (win-x64 Release Framework-Dependent)
+        shell: pwsh
+        run: |
+          dotnet publish src/QuickScan.UI/QuickScan.UI.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained false `
+            -p:PublishSingleFile=true `
+            -p:DebugType=None `
+            -p:DebugSymbols=false `
+            -o ./publish-fd
+
+          # Ensure no debug symbol files remain
+          Get-ChildItem -Path ./publish-fd -Recurse -Include *.pdb, *.xml | Remove-Item -Force -ErrorAction SilentlyContinue
+
+      - name: Create Portable Zip Archive (Framework-Dependent)
+        shell: pwsh
+        run: |
+          $zipFdName = "QuickScan-FrameworkDependent-win-x64-${{ steps.vars.outputs.TAG_NAME }}.zip"
+          Compress-Archive -Path ./publish-fd/* -DestinationPath "./$zipFdName"
+          Write-Output "ZIP_FD_NAME=$zipFdName" >> $env:GITHUB_OUTPUT
+        id: package_fd
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "QuickScan ${{ steps.vars.outputs.TAG_NAME }}"
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            dist/*.exe
+            ${{ steps.package.outputs.ZIP_NAME }}
+            ${{ steps.package_fd.outputs.ZIP_FD_NAME }}

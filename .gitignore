@@ -480,3 +480,35 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# JetBrains Rider & IntelliJ
+.idea/
+*.DotSettings.user
+
+# Visual Studio Code
+.vscode/
+
+# Test Results & Code Coverage
+[Tt]est[Rr]esult*/
+TestResults/
+coverage*.xml
+coverage*.json
+*.coverage
+
+# Avalonia UI cache
+.avalonia/
+
+# Release packaging & distribution outputs
+[Pp]ublish/
+publish-fd/
+dist/
+[Aa]rtifacts/
+[Oo]ut/
+*.zip
+*.tar.gz
+
+# Local Temporary & Application Scratch Files
+*.tmp
+*.temp
+*.log
+scratch/
