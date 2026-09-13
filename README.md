@@ -26,18 +26,30 @@ Reimplemented from the original Rust `quickscan` project to provide full enterpr
 
 ## Architecture 🏛️
 
-The project strictly follows **Clean Architecture** and **Clean Code** principles:
+The project strictly adheres to **Clean Architecture**, **SOLID**, and **MVVM** principles:
 
-- `QuickScan.Domain`: Pure domain models (`FsEntry`, `SortBy`, `SortOrder`, `ScanProgress`) with zero external dependencies.
-- `QuickScan.Application`: Application contracts (`IScanEngine`, `IDriveService`, `IFileSystemLauncher`, `IScanCache`, `ILocalizationService`) and orchestration services (`ScanService`).
-- `QuickScan.Infrastructure`: Multi-core scanning engine (`FastParallelScanner`), drive enumeration (`WindowsDriveService`), in-memory caching (`InMemoryScanCache`), and process launchers.
-- `QuickScan.UI`: Avalonia MVVM application powered by `CommunityToolkit.Mvvm`, compiled bindings, dynamic resource dictionaries, and Dependency Injection.
-- `QuickScan.Tests`: Comprehensive test suite using xUnit covering domain models, caching, scanning logic, and application services.
+- **[`QuickScan.Domain`](docs/architecture/modules/domain.md)**: Pure domain entities (`FsEntry`, `SortBy`, `SortOrder`, `ScanProgress`) and size formatting with zero external dependencies.
+- **[`QuickScan.Application`](docs/architecture/modules/application.md)**: Service contracts (`IScanEngine`, `IDriveService`, `IFileSystemLauncher`, `IScanCache`, `ILocalizationService`) and orchestration services (`ScanService`).
+- **[`QuickScan.Infrastructure`](docs/architecture/modules/infrastructure.md)**: Multi-core parallel scan engine (`FastParallelScanner`), drive enumeration (`WindowsDriveService`), in-memory caching (`InMemoryScanCache`), and OS launchers.
+- **[`QuickScan.UI`](docs/architecture/modules/ui.md)**: Avalonia MVVM presentation powered by `CommunityToolkit.Mvvm`, compiled bindings, dynamic bilingual resources, and Dependency Injection.
+- **`QuickScan.Tests`**: Comprehensive automated test suite using xUnit covering domain models, caching, scanning logic, and application orchestration.
+
+For comprehensive architectural blueprints, sequence diagrams, and cross-cutting rules, see [ARCHITECTURE.md](ARCHITECTURE.md) and the modular specifications in [`docs/architecture/modules/`](docs/architecture/modules/).
 
 ## Getting Started 🛠️
 
 ### Prerequisites
 - [.NET 10 SDK](https://dotnet.microsoft.com/)
+
+### Repository Setup (Git Submodules)
+This repository utilizes shared development and agent skills as a Git submodule at `_agents`:
+```powershell
+# Clone repository with submodules
+git clone --recurse-submodules https://github.com/histore/quickscan.git
+
+# Or initialize submodules in an existing clone
+git submodule update --init --recursive
+```
 
 ### Building and Running
 ```powershell

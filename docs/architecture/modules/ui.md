@@ -33,36 +33,36 @@ QuickScan.UI/
 
 ## Key Components
 
-### 1. Composition Root ([`App.axaml.cs`](file:///c:/projekte/csharp/quickscan/src/QuickScan.UI/App.axaml.cs))
+### 1. Composition Root ([`App.axaml.cs`](../../../src/QuickScan.UI/App.axaml.cs))
 Initializes dependency injection via `Microsoft.Extensions.DependencyInjection`:
 - Registers application services: `IScanEngine`, `IScanCache`, `IDriveService`, `IFileSystemLauncher`, `ILocalizationService`, `ScanService`.
-- Registers presentation models: [`MainViewModel`](file:///c:/projekte/csharp/quickscan/src/QuickScan.UI/ViewModels/MainViewModel.cs).
+- Registers presentation models: [`MainViewModel`](../../../src/QuickScan.UI/ViewModels/MainViewModel.cs).
 - Resolves the root `MainWindow` with its data context upon startup.
 
 ### 2. ViewModels (`ViewModels/`)
-- **[`MainViewModel`](file:///c:/projekte/csharp/quickscan/src/QuickScan.UI/ViewModels/MainViewModel.cs)**:
+- **[`MainViewModel`](../../../src/QuickScan.UI/ViewModels/MainViewModel.cs)**:
   Central state coordinator:
   - Manages drive listings, selected target directory, and scan execution/cancellation.
-  - Maintains the collection of proportional [`BarItemViewModel`](file:///c:/projekte/csharp/quickscan/src/QuickScan.UI/ViewModels/BarItemViewModel.cs) items for the active directory.
+  - Maintains the collection of proportional [`BarItemViewModel`](../../../src/QuickScan.UI/ViewModels/BarItemViewModel.cs) items for the active directory.
   - Coordinates folder navigation (`NavigateInto`, `NavigateUp`, path breadcrumbs).
   - Handles dynamic sorting by size, name, count, or date.
   - Binds live metrics from `ScanProgress` during scanning.
-- **[`BarItemViewModel`](file:///c:/projekte/csharp/quickscan/src/QuickScan.UI/ViewModels/BarItemViewModel.cs)**:
+- **[`BarItemViewModel`](../../../src/QuickScan.UI/ViewModels/BarItemViewModel.cs)**:
   Represents an individual item in the visual distribution chart:
   - Formatted byte size, item count, percentage of parent directory.
   - Proportional bar width and distinct styling (directories vs. individual files).
-- **[`ExplorerNodeViewModel`](file:///c:/projekte/csharp/quickscan/src/QuickScan.UI/ViewModels/ExplorerNodeViewModel.cs)**:
+- **[`ExplorerNodeViewModel`](../../../src/QuickScan.UI/ViewModels/ExplorerNodeViewModel.cs)**:
   Hierarchical node for the collapsible sidebar directory tree, populating child nodes on demand.
 
 ### 3. Views (`Views/`)
-- **[`MainWindow.axaml`](file:///c:/projekte/csharp/quickscan/src/QuickScan.UI/Views/MainWindow.axaml)**:
+- **[`MainWindow.axaml`](../../../src/QuickScan.UI/Views/MainWindow.axaml)**:
   Modern Avalonia declarative UI layout:
   - Top toolbar: Quick drive selection buttons, folder browser button, sort criteria dropdown, language toggle button.
   - Main workspace: Split view with collapsible directory navigation sidebar and responsive proportional bar chart list.
   - Bottom status bar: Real-time scan statistics (current path, scanned directories/files, total bytes processed, execution time).
   - Compiled bindings (`x:DataType`) for high performance and zero reflection overhead.
 
-### 4. Dynamic Localization ([`LocalizationService.cs`](file:///c:/projekte/csharp/quickscan/src/QuickScan.UI/Services/LocalizationService.cs))
+### 4. Dynamic Localization ([`LocalizationService.cs`](../../../src/QuickScan.UI/Services/LocalizationService.cs))
 - Dynamic runtime language switching between German (`de`) and English (`en`).
 - Swaps the active XAML resource dictionary in `Application.Current.Resources.MergedDictionaries`.
 - All user-facing strings are bound via dynamic resource lookups (`{DynamicResource StringKey}`).
