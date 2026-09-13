@@ -22,7 +22,7 @@ QuickScan.Domain/
 
 ## Key Types & Contracts
 
-### 1. [`FsEntry`](file:///c:/projekte/csharp/quickscan/src/QuickScan.Domain/Models/FsEntry.cs)
+### 1. [`FsEntry`](../../../src/QuickScan.Domain/Models/FsEntry.cs)
 Hierarchical tree node representing either a file system directory or an individual file.
 - **Properties**:
   - `Name`: File or folder name.
@@ -32,13 +32,13 @@ Hierarchical tree node representing either a file system directory or an individ
   - `DirectoryCount`: Total count of subdirectories contained recursively.
   - `IsDirectory`: Boolean indicating if the node represents a container directory.
   - `LastModified`: UTC/local timestamp of last modification.
-  - `Children`: Read-only or mutable collection of child [`FsEntry`](file:///c:/projekte/csharp/quickscan/src/QuickScan.Domain/Models/FsEntry.cs) nodes.
+  - `Children`: Read-only or mutable collection of child [`FsEntry`](../../../src/QuickScan.Domain/Models/FsEntry.cs) nodes.
 - **Operations**:
   - `AddChild(FsEntry child)`: Adds child node and updates aggregated statistics.
   - `FindNode(string path)`: Recursively locates a descendant node matching the given path.
   - `SortChildren(SortBy sortBy, SortOrder order)`: In-place sorting of children by size, name, item count, or timestamp.
 
-### 2. [`ScanProgress`](file:///c:/projekte/csharp/quickscan/src/QuickScan.Domain/Models/ScanProgress.cs)
+### 2. [`ScanProgress`](../../../src/QuickScan.Domain/Models/ScanProgress.cs)
 Immutable record providing point-in-time metrics during an active scan:
 - `CurrentPath`: The directory path currently being traversed.
 - `FoldersScanned`: Running counter of processed directories.
@@ -46,12 +46,12 @@ Immutable record providing point-in-time metrics during an active scan:
 - `BytesScanned`: Running counter of accumulated bytes.
 - `IsComplete`: Flag indicating final scan completion.
 
-### 3. [`SortBy`](file:///c:/projekte/csharp/quickscan/src/QuickScan.Domain/Models/SortBy.cs) & [`SortOrder`](file:///c:/projekte/csharp/quickscan/src/QuickScan.Domain/Models/SortOrder.cs)
+### 3. [`SortBy`](../../../src/QuickScan.Domain/Models/SortBy.cs) & [`SortOrder`](../../../src/QuickScan.Domain/Models/SortOrder.cs)
 Domain enumerations defining sort criteria:
 - **`SortBy`**: `Size`, `Name`, `Count` (item count), `Date` (last modified).
 - **`SortOrder`**: `Ascending`, `Descending`.
 
-### 4. [`ByteSizeFormatter`](file:///c:/projekte/csharp/quickscan/src/QuickScan.Domain/Common/ByteSizeFormatter.cs)
+### 4. [`ByteSizeFormatter`](../../../src/QuickScan.Domain/Common/ByteSizeFormatter.cs)
 Utility class providing localized and invariant culture formatting of raw byte counts into human-readable representations (`B`, `KB`, `MB`, `GB`, `TB`, `PB`) using standard binary (1024) or decimal multipliers.
 
 ---

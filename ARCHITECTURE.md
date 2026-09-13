@@ -1,88 +1,94 @@
-# Architecture Documentation: QuickScan Sharp
+# Architecture Documentation: QuickScan Sharp 🏛️
 
-## Overview
-**QuickScan Sharp** is a modular, high-performance disk space analyzer implemented in **C# 14** targeting **.NET 10** with **Avalonia UI 12**. It reimplements the architecture of the Rust `quickscan` application while leveraging .NET multi-threading, Clean Architecture, MVVM design patterns, and dynamic bilingual localization.
+## System Purpose & Scope
+**QuickScan Sharp** is a modular, high-performance desktop disk space analyzer built with **C# 14**, targeting **.NET 10** and **Avalonia UI 12**. It reimplements the architecture of the original Rust `quickscan` application while providing enterprise compatibility, eliminating false positives, and introducing rich dark theme styling with dynamic bilingual localization (German and English).
 
-## Core Design Principles
-1. **Clean Architecture**: Strict separation of concerns across layers. Domain models remain independent of external libraries or UI frameworks.
-2. **Clean Code & SOLID**: Highly focused classes, immutable records where appropriate, explicit interfaces, and descriptive naming.
-3. **High-Throughput Concurrency**: Multi-core recursive file system traversal via bounded parallelism (`Parallel.ForEach`) with throttled progress updates to avoid UI saturation.
-4. **Resilience & Safety**:
-   - Prevention of infinite loops across NTFS junctions and symbolic links (`FileAttributes.ReparsePoint`).
-   - Graceful handling of `UnauthorizedAccessException` and I/O locks.
-   - Non-blocking asynchronous cancellation support via `CancellationToken`.
-5. **0% Hardcoded UI Strings**: Full bilingual internationalization (German and English) utilizing dynamic Avalonia Resource Dictionaries.
+The application strictly adheres to **Clean Architecture**, **SOLID**, and **MVVM** (Model-View-ViewModel) design principles to ensure strict separation of concerns, high automated testability, and zero external dependency coupling in the domain layer.
 
-## System Layers
+---
 
-### 1. Domain Layer (`QuickScan.Domain`)
-Contains core business entities, value objects, and domain logic with zero external dependencies:
-- **`FsEntry`**: Hierarchical representation of directories and files containing metadata (size, file counts, directory counts, timestamps, children). Supports tree traversal, path searches, and multi-criteria sorting.
-- **`ScanProgress`**: Record containing real-time scan metrics (current path, folder counter, file counter, byte counter, completion state).
-- **`SortBy` & `SortOrder`**: Enums defining sorting dimensions and directions.
-- **`ByteSizeFormatter`**: Value formatter with invariant culture formatting for storage sizes.
+## Clean Architecture Layers
 
-### 2. Application Layer (`QuickScan.Application`)
-Defines the abstract contracts and use cases:
-- **Contracts**:
-  - `IScanEngine`: Abstraction for recursive directory scanning.
-  - `IScanCache`: In-memory caching interface for fast hierarchical tree lookup.
-  - `IDriveService`: Storage drive enumeration contract.
-  - `IFileSystemLauncher`: Contract for opening directories or files in the native desktop environment.
-  - `ILocalizationService`: Contract for dynamic language switching.
-- **Services**:
-  - `ScanService`: Coordinates scan execution, cache hits, progress aggregation, cancellation, and parent navigation (`GoUpAsync`).
+```mermaid
+graph TD
+    UI["QuickScan.UI<br/>Presentation Layer: Views & ViewModels"]
+    Infra["QuickScan.Infrastructure<br/>External Adapters: Scanning & OS Services"]
+    App["QuickScan.Application<br/>Use Cases & Service Contracts"]
+    Domain["QuickScan.Domain<br/>Core Entities & Value Objects"]
 
-### 3. Infrastructure Layer (`QuickScan.Infrastructure`)
-Contains concrete implementations of external services:
-- **`FastParallelScanner`**: Implements `IScanEngine`. Leverages multi-core parallel processing, throttled UI progress reporting (every 250 folders or 60ms), and cycle detection for symbolic links and junctions.
-- **`InMemoryScanCache`**: Thread-safe caching utilizing `ConcurrentDictionary<string, FsEntry>` with case-insensitive path comparisons.
-- **`WindowsDriveService`**: Detects system drives using `System.IO.DriveInfo`.
-- **`ProcessFileSystemLauncher`**: Opens files and paths using system shell (`explorer.exe`, `xdg-open`, or macOS `open`).
-
-### 4. Presentation Layer (`QuickScan.UI`)
-Avalonia MVVM application powered by `CommunityToolkit.Mvvm`:
-- **`App`**: Sets up the IoC container via `Microsoft.Extensions.DependencyInjection` and registers services and view models.
-- **`MainViewModel`**: Manages user actions, scan requests, directory tree state, drive listings, sorting, and language switching.
-- **`BarItemViewModel`**: Visual representation of proportional usage bars (Blue for folders, Green for files) with calculated percentage widths.
-- **`ExplorerNodeViewModel`**: On-demand hierarchical directory node for the explorer sidebar.
-- **`MainWindow.axaml`**: Declarative UI layout with top toolbar, collapsible sidebar, interactive bar chart list, status bar, and modal about dialog.
-- **`Resources/Strings.en.axaml` & `Resources/Strings.de.axaml`**: Localized bilingual strings.
-
-## Data Flow Diagram
-
-```text
-[User Action: Select Drive / Folder]
-               │
-               ▼
-      [MainViewModel]
-               │
-               ▼
-         [ScanService] ──── Check Cache ────► [InMemoryScanCache]
-               │                                       │
-         (Cache Miss)                             (Cache Hit)
-               │                                       │
-               ▼                                       ▼
-     [FastParallelScanner]                     [Immediate UI Update]
-    (Parallel.ForEach on SSD)
-               │
-         Progress Events (Throttled)
-               │
-               ▼
-      [Status Bar & Metrics]
-               │
-               ▼
-     [Hierarchical FsEntry]
-               │
-               ▼
-       [Update Cache]
-               │
-               ▼
-   [Populate Bar Chart & Tree]
+    UI --> App
+    UI --> Domain
+    Infra --> App
+    Infra --> Domain
+    App --> Domain
 ```
 
-## Automated Testing (`QuickScan.Tests`)
-Includes automated unit tests using **xUnit** following the Arrange-Act-Assert (AAA) pattern:
-- Domain models and tree queries (`FsEntryTests`, `ByteSizeFormatterTests`).
-- Infrastructure services and parallel directory scanning (`FastParallelScannerTests`, `InMemoryScanCacheTests`).
-- Application orchestration and caching (`ScanServiceTests`).
+### Dependency Rules
+- **Domain (`QuickScan.Domain`)**: Pure business models and formatting logic with zero external dependencies.
+- **Application (`QuickScan.Application`)**: Defines service contracts, data transfer records, and orchestration logic. Depends solely on Domain.
+- **Infrastructure (`QuickScan.Infrastructure`)**: Implements Application contracts for multi-core file system traversal, storage drive detection, and process launching.
+- **Presentation (`QuickScan.UI`)**: Avalonia MVVM application powered by `CommunityToolkit.Mvvm`, compiled bindings, dynamic bilingual resources, and Dependency Injection.
+- **Test Suite (`QuickScan.Tests`)**: Comprehensive xUnit automated tests covering domain logic, caching, scanner resilience, and application services.
+
+---
+
+## Core Data Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant MainVM as MainViewModel
+    participant ScanSvc as ScanService
+    participant Cache as InMemoryScanCache
+    participant Scanner as FastParallelScanner
+    participant UI as MainWindow (Avalonia)
+
+    User->>MainVM: Select Drive / Folder to Scan
+    MainVM->>ScanSvc: ScanAsync(path, progress, cancellationToken)
+    ScanSvc->>Cache: TryGet(path)
+    alt Cache Hit
+        Cache-->>ScanSvc: Cached FsEntry
+        ScanSvc-->>MainVM: FsEntry
+        MainVM->>UI: Populate Bar Items & Directory Tree
+    else Cache Miss
+        ScanSvc->>Scanner: ScanAsync(path, progress, cancellationToken)
+        loop Recursive Traversal
+            Scanner-->>MainVM: Throttled Progress Update
+            MainVM->>UI: Update Status Bar & Counters
+        end
+        Scanner-->>ScanSvc: Completed FsEntry Tree
+        ScanSvc->>Cache: Store(path, FsEntry)
+        ScanSvc-->>MainVM: FsEntry
+        MainVM->>UI: Render Proportional Bars & Metrics
+    end
+```
+
+---
+
+## Cross-Cutting Concerns
+
+1. **High-Throughput Concurrency**:
+   - Multi-core bounded parallelism via `Parallel.ForEach` during recursive file system traversal.
+   - Throttled UI progress dispatching (every 250 folders or 60ms) to ensure responsive rendering without saturating the UI thread.
+2. **Resilience & I/O Safety**:
+   - Cycle detection and infinite recursion prevention across NTFS junctions and symbolic links (`FileAttributes.ReparsePoint`).
+   - Graceful exception recovery for `UnauthorizedAccessException`, locked files, and path length limitations.
+   - Cooperative, non-blocking asynchronous cancellation support via `CancellationToken`.
+3. **Internationalization & Localization (i18n / l10n)**:
+   - 0% hardcoded user-facing strings.
+   - Dynamic bilingual resource dictionaries ([`Strings.en.axaml`](src/QuickScan.UI/Resources/Strings.en.axaml) and [`Strings.de.axaml`](src/QuickScan.UI/Resources/Strings.de.axaml)) swapped at runtime without restarting the application.
+4. **Memory Management & Caching**:
+   - Bounded in-memory tree caching with case-insensitive path comparisons in [`InMemoryScanCache`](src/QuickScan.Infrastructure/Services/InMemoryScanCache.cs).
+   - Lightweight hierarchical [`FsEntry`](src/QuickScan.Domain/Models/FsEntry.cs) node structure.
+
+---
+
+## Modules Index 📚
+
+Detailed architectural specifications for individual system layers are maintained modularly:
+
+- [Domain Module](docs/architecture/modules/domain.md): Core business entities, records, and size formatting.
+- [Application Module](docs/architecture/modules/application.md): Service contracts, data transfer records, and use case orchestration.
+- [Infrastructure Module](docs/architecture/modules/infrastructure.md): Multi-core parallel scan engine, in-memory caching, and operating system launchers.
+- [UI Module](docs/architecture/modules/ui.md): Avalonia MVVM presentation, ViewModels, declarative views, and dynamic localization.
