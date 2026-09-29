@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using QuickScan.Domain.Models;
 using QuickScan.Infrastructure.Scanning;
 using Xunit;
 
@@ -54,6 +55,24 @@ public sealed class FastParallelScannerTests : IDisposable
 
         // Assert
         Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task ScanDirectoryAsync_WhenCompleted_ReportsIsCompletedTrue()
+    {
+        // Arrange
+        var scanner = new FastParallelScanner();
+        ScanProgress? lastProgress = null;
+        var progress = new Progress<ScanProgress>(p => lastProgress = p);
+
+        // Act
+        var result = await scanner.ScanDirectoryAsync(_testDir, progress: progress);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.NotNull(lastProgress);
+        Assert.True(lastProgress.IsCompleted);
+        Assert.False(lastProgress.IsCancelled);
     }
 
     public void Dispose()

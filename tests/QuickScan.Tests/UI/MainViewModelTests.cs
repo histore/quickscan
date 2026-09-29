@@ -46,14 +46,21 @@ public sealed class MainViewModelTests
 
     private sealed class FakeLocalizationService : ILocalizationService
     {
-        public string CurrentLanguage => "en";
-        public string GetString(string key) => key == "Status.Ready" ? "Ready" : key;
-        public void SetLanguage(string cultureCode) { }
-        public event Action? LanguageChanged
+        public string CurrentLanguage { get; private set; } = "en";
+        public string GetString(string key) => key switch
         {
-            add { }
-            remove { }
+            "Status.Ready" => CurrentLanguage == "de" ? "Bereit" : "Ready",
+            "Label.Folders" => CurrentLanguage == "de" ? "Ordner" : "Folders",
+            "Label.Files" => CurrentLanguage == "de" ? "Dateien" : "Files",
+            "Status.Scanning" => CurrentLanguage == "de" ? "Scan läuft: " : "Scanning: ",
+            _ => key
+        };
+        public void SetLanguage(string cultureCode)
+        {
+            CurrentLanguage = cultureCode;
+            LanguageChanged?.Invoke();
         }
+        public event Action? LanguageChanged;
     }
 
     [Fact]
@@ -384,6 +391,44 @@ public sealed class MainViewModelTests
         Assert.NotNull(vm.AppVersion);
         Assert.Matches(@"^v\d+\.\d+\.\d+$", vm.AppVersion);
         Assert.Equal("v0.1.1", vm.AppVersion);
+    }
+
+    [Fact]
+    public void SetLanguage_WhenLanguageChanges_UpdatesStatusTextDynamically()
+    {
+        // Arrange
+        var fakeEngine = new FakeScanEngine();
+        var cache = new InMemoryScanCache();
+        using var scanService = new ScanService(fakeEngine, cache);
+        var driveService = new FakeDriveService();
+        var launcher = new FakeFileSystemLauncher();
+        var locService = new FakeLocalizationService();
+        using var vm = new MainViewModel(scanService, driveService, launcher, cache, locService);
+
+        Assert.Equal("Ready", vm.StatusText);
+
+        // Act: Switch to German
+        vm.SetLanguage("de");
+
+        // Assert: Status text is dynamically updated
+        Assert.Equal("Bereit", vm.StatusText);
+    }
+
+    [Fact]
+    public void MainViewModel_ImplementsIDisposable_AndDisposesCleanly()
+    {
+        // Arrange
+        var fakeEngine = new FakeScanEngine();
+        var cache = new InMemoryScanCache();
+        using var scanService = new ScanService(fakeEngine, cache);
+        var driveService = new FakeDriveService();
+        var launcher = new FakeFileSystemLauncher();
+        var locService = new FakeLocalizationService();
+        var vm = new MainViewModel(scanService, driveService, launcher, cache, locService);
+
+        // Act & Assert
+        Assert.IsAssignableFrom<IDisposable>(vm);
+        vm.Dispose(); // Should not throw
     }
 }
 

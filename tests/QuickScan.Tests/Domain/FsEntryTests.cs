@@ -75,4 +75,39 @@ public sealed class FsEntryTests
         Assert.True(cache.ContainsKey("C:\\root\\a.txt"));
         Assert.True(cache.ContainsKey("C:\\root\\b.txt"));
     }
+
+    [Fact]
+    public void Constructor_WhenPathIsRootDriveAndNameEmpty_FallsBackToDrivePath()
+    {
+        // Arrange & Act
+        var root = new FsEntry("C:\\", "", 0, true, null, null, 0, 0);
+
+        // Assert
+        Assert.Equal("C:\\", root.Name);
+    }
+
+    [Fact]
+    public void FindEntry_WhenTargetPathSharesPrefixWithoutBoundary_DoesNotMatch()
+    {
+        // Arrange: C:\test containing subfile.txt, but target is C:\test-other\file.txt
+        var subFile = new FsEntry("C:\\test\\subfile.txt", "subfile.txt", 50, false, null, null, 1, 0);
+        var root = new FsEntry("C:\\test", "test", 50, true, null, null, 1, 0, new[] { subFile });
+
+        // Act: Search for a sibling path that starts with "C:\test" as string prefix but is a different directory
+        var found = root.FindEntry("C:\\test-other\\file.txt");
+
+        // Assert
+        Assert.Null(found);
+    }
+
+    [Fact]
+    public void FindEntry_WithTrailingSlashDifferences_MatchesCorrectly()
+    {
+        // Arrange
+        var root = new FsEntry("C:\\test", "test", 0, true, null, null, 0, 0);
+
+        // Act & Assert
+        Assert.NotNull(root.FindEntry("C:\\test\\"));
+        Assert.NotNull(root.FindEntry("C:\\test"));
+    }
 }

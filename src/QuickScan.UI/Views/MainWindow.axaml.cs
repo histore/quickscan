@@ -28,9 +28,15 @@ public partial class MainWindow : Window
 
     private async Task<string?> PickFolderAsync()
     {
+        string title = "Select Drive or Folder to Scan";
+        if (Avalonia.Application.Current is { } app && app.TryGetResource("Dialog.Picker.Title", null, out var val) && val is string str)
+        {
+            title = str;
+        }
+
         var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "Select Drive or Folder to Scan",
+            Title = title,
             AllowMultiple = false
         }).ConfigureAwait(true);
 
@@ -67,7 +73,12 @@ public partial class MainWindow : Window
         // Enter: Navigate to selected item in main chart or scan selected node in tree
         else if (e.Key == Key.Enter)
         {
-            if (BarListBox.SelectedItem is BarItemViewModel barItem)
+            if (vm.IsFileDetailsVisible)
+            {
+                vm.OpenCurrentFile();
+                e.Handled = true;
+            }
+            else if (BarListBox.SelectedItem is BarItemViewModel barItem)
             {
                 _ = vm.NavigateToItemAsync(barItem);
                 e.Handled = true;
@@ -90,15 +101,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnBarItemDoubleTapped(object? sender, TappedEventArgs e)
-    {
-        if (DataContext is MainViewModel vm && BarListBox.SelectedItem is BarItemViewModel item)
-        {
-            _ = vm.NavigateToItemAsync(item);
-            e.Handled = true;
-        }
-    }
-
     private void OnTreeSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (DataContext is MainViewModel vm && !vm.IsSynchronizingSelection)
@@ -115,7 +117,7 @@ public partial class MainWindow : Window
         // Re-clicking an already selected tree node initiates scan
         if (sender is Control control && control.DataContext is ExplorerNodeViewModel node && DataContext is MainViewModel vm)
         {
-            if (!string.IsNullOrWhiteSpace(node.Path))
+            if (vm.SelectedNode == node && !string.IsNullOrWhiteSpace(node.Path))
             {
                 _ = vm.StartScanAsync(node.Path);
                 e.Handled = true;

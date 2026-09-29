@@ -53,6 +53,6 @@ public partial class App : Avalonia.Application
         services.AddSingleton<ScanService>();
 
         // ViewModels
-        services.AddTransient<MainViewModel>();
+        services.AddSingleton<MainViewModel>();
     }
 }

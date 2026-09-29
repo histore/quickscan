@@ -16,7 +16,7 @@ namespace QuickScan.UI.ViewModels;
 /// <summary>
 /// Main application ViewModel coordinating user interactions, scans, navigation, and visual presentation.
 /// </summary>
-public sealed partial class MainViewModel : ObservableObject
+public sealed partial class MainViewModel : ViewModelBase, IDisposable
 {
     private readonly ScanService _scanService;
     private readonly IDriveService _driveService;
@@ -155,6 +155,7 @@ public sealed partial class MainViewModel : ObservableObject
         _scanService.ScanCompleted += OnScanCompleted;
         _scanService.ProgressChanged += OnProgressChanged;
         _scanService.ScanningStateChanged += OnScanningStateChanged;
+        _localizationService.LanguageChanged += OnLanguageChanged;
 
         StatusText = _localizationService.GetString("Status.Ready");
         LoadDrives();
@@ -375,7 +376,20 @@ public sealed partial class MainViewModel : ObservableObject
         RunOnUIThread(() =>
         {
             CurrentScanningPath = progress.CurrentPath;
-            StatusText = $"{_localizationService.GetString("Status.Scanning")} {progress.FoldersScanned:N0} folders, {progress.FilesScanned:N0} files ({ByteSizeFormatter.Format(progress.BytesScanned)})";
+            var foldersLabel = _localizationService.GetString("Label.Folders").ToLowerInvariant();
+            var filesLabel = _localizationService.GetString("Label.Files").ToLowerInvariant();
+            StatusText = $"{_localizationService.GetString("Status.Scanning")} {progress.FoldersScanned:N0} {foldersLabel}, {progress.FilesScanned:N0} {filesLabel} ({ByteSizeFormatter.Format(progress.BytesScanned)})";
+        });
+    }
+
+    private void OnLanguageChanged()
+    {
+        RunOnUIThread(() =>
+        {
+            if (!IsScanning)
+            {
+                StatusText = _localizationService.GetString("Status.Ready");
+            }
         });
     }
 
@@ -435,10 +449,18 @@ public sealed partial class MainViewModel : ObservableObject
                         {
                             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                             {
-                                if (found is not null)
+                                try
                                 {
-                                    found.IsSelected = true;
-                                    SelectedNode = found;
+                                    IsSynchronizingSelection = true;
+                                    if (found is not null)
+                                    {
+                                        found.IsSelected = true;
+                                        SelectedNode = found;
+                                    }
+                                }
+                                finally
+                                {
+                                    IsSynchronizingSelection = false;
                                 }
                             }, Avalonia.Threading.DispatcherPriority.Loaded);
                         }
@@ -479,7 +501,13 @@ public sealed partial class MainViewModel : ObservableObject
             return string.Empty;
         }
 
-        var fullPath = Path.GetFullPath(path);
+        var trimmed = path.Trim();
+        if (trimmed.Length == 2 && trimmed[1] == ':')
+        {
+            trimmed += Path.DirectorySeparatorChar;
+        }
+
+        var fullPath = Path.GetFullPath(trimmed);
         var root = Path.GetPathRoot(fullPath);
         if (string.Equals(fullPath, root, StringComparison.OrdinalIgnoreCase))
         {
@@ -564,5 +592,14 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         OnPropertyChanged(nameof(ShowEmptyFolderMessage));
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        _scanService.ScanCompleted -= OnScanCompleted;
+        _scanService.ProgressChanged -= OnProgressChanged;
+        _scanService.ScanningStateChanged -= OnScanningStateChanged;
+        _localizationService.LanguageChanged -= OnLanguageChanged;
     }
 }

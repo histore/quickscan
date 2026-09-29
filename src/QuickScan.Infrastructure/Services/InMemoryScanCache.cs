@@ -21,7 +21,13 @@ public sealed class InMemoryScanCache : IScanCache
             return false;
         }
 
-        return _cache.TryGetValue(path, out entry);
+        if (_cache.TryGetValue(path, out entry))
+        {
+            return true;
+        }
+
+        var normalized = NormalizeKey(path);
+        return _cache.TryGetValue(normalized, out entry);
     }
 
     /// <inheritdoc/>
@@ -29,6 +35,11 @@ public sealed class InMemoryScanCache : IScanCache
     {
         ArgumentNullException.ThrowIfNull(rootEntry);
         rootEntry.FillCache(_cache);
+        var norm = NormalizeKey(rootEntry.Path);
+        if (!string.IsNullOrEmpty(norm))
+        {
+            _cache[norm] = rootEntry;
+        }
     }
 
     /// <inheritdoc/>
@@ -40,6 +51,41 @@ public sealed class InMemoryScanCache : IScanCache
     /// <inheritdoc/>
     public bool Contains(string path)
     {
-        return !string.IsNullOrWhiteSpace(path) && _cache.ContainsKey(path);
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return false;
+        }
+
+        return _cache.ContainsKey(path) || _cache.ContainsKey(NormalizeKey(path));
+    }
+
+    private static string NormalizeKey(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            var trimmed = path.Trim();
+            if (trimmed.Length == 2 && trimmed[1] == ':')
+            {
+                trimmed += System.IO.Path.DirectorySeparatorChar;
+            }
+
+            var fullPath = System.IO.Path.GetFullPath(trimmed);
+            var root = System.IO.Path.GetPathRoot(fullPath);
+            if (string.Equals(fullPath, root, StringComparison.OrdinalIgnoreCase))
+            {
+                return fullPath.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar) + System.IO.Path.DirectorySeparatorChar;
+            }
+
+            return fullPath.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+        }
+        catch
+        {
+            return path.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+        }
     }
 }

@@ -47,7 +47,11 @@ public sealed partial class ExplorerNodeViewModel : ObservableObject
     public ExplorerNodeViewModel(string path, string name, bool isDirectory, IScanCache cache)
     {
         Path = path ?? throw new ArgumentNullException(nameof(path));
-        Name = string.IsNullOrWhiteSpace(name) ? System.IO.Path.GetFileName(path) ?? path : name;
+        var trimmed = path.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+        var fallbackFileName = System.IO.Path.GetFileName(trimmed);
+        Name = !string.IsNullOrWhiteSpace(name)
+            ? name
+            : (!string.IsNullOrWhiteSpace(fallbackFileName) ? fallbackFileName : path);
         IsDirectory = isDirectory;
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
 
@@ -82,13 +86,15 @@ public sealed partial class ExplorerNodeViewModel : ObservableObject
         try
         {
             var dirInfo = new DirectoryInfo(Path);
-            foreach (var subDir in dirInfo.EnumerateDirectories().OrderBy(d => d.Name))
+            var enumOptions = new EnumerationOptions
             {
-                if ((subDir.Attributes & FileAttributes.ReparsePoint) != 0)
-                {
-                    continue;
-                }
+                IgnoreInaccessible = true,
+                ReturnSpecialDirectories = false,
+                AttributesToSkip = FileAttributes.ReparsePoint
+            };
 
+            foreach (var subDir in dirInfo.EnumerateDirectories("*", enumOptions).OrderBy(d => d.Name))
+            {
                 Children.Add(new ExplorerNodeViewModel(subDir.FullName, subDir.Name, true, _cache));
             }
         }

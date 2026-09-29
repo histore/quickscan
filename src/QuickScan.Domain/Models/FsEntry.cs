@@ -26,7 +26,11 @@ public sealed class FsEntry
         IReadOnlyList<FsEntry>? children = null)
     {
         Path = path ?? throw new ArgumentNullException(nameof(path));
-        Name = string.IsNullOrWhiteSpace(name) ? System.IO.Path.GetFileName(path) ?? path : name;
+        var trimmed = path.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+        var fallbackFileName = System.IO.Path.GetFileName(trimmed);
+        Name = !string.IsNullOrWhiteSpace(name)
+            ? name
+            : (!string.IsNullOrWhiteSpace(fallbackFileName) ? fallbackFileName : path);
         Size = size;
         IsDirectory = isDirectory;
         CreatedAt = createdAt;
@@ -93,18 +97,30 @@ public sealed class FsEntry
     /// <returns>The matching <see cref="FsEntry"/> if found; otherwise null.</returns>
     public FsEntry? FindEntry(string targetPath)
     {
-        if (string.Equals(Path, targetPath, StringComparison.OrdinalIgnoreCase))
-        {
-            return this;
-        }
-
-        if (Children is null)
+        if (string.IsNullOrWhiteSpace(targetPath))
         {
             return null;
         }
 
-        // Only search inside children if targetPath starts with this path
-        if (targetPath.StartsWith(Path, StringComparison.OrdinalIgnoreCase))
+        var normalizedPath = Path.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+        var normalizedTarget = targetPath.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+
+        if (string.Equals(normalizedPath, normalizedTarget, StringComparison.OrdinalIgnoreCase))
+        {
+            return this;
+        }
+
+        if (Children is null || Children.Count == 0)
+        {
+            return null;
+        }
+
+        var prefix = Path.EndsWith(System.IO.Path.DirectorySeparatorChar) || Path.EndsWith(System.IO.Path.AltDirectorySeparatorChar)
+            ? Path
+            : Path + System.IO.Path.DirectorySeparatorChar;
+
+        if (targetPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ||
+            normalizedTarget.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
         {
             foreach (var child in Children)
             {

@@ -42,7 +42,7 @@ public sealed class FastParallelScanner : IScanEngine
             LastReportTicks = Environment.TickCount64
         };
 
-        void ReportProgress(string currentPath, bool force = false)
+        void ReportProgress(string currentPath, bool force = false, bool isCompleted = false)
         {
             if (progress is null)
             {
@@ -52,7 +52,7 @@ public sealed class FastParallelScanner : IScanEngine
             var currentTicks = Environment.TickCount64;
             var folders = Interlocked.Read(ref state.FolderCounter);
             // Report every 250 folders or every 60ms
-            if (force || folders % 250 == 0 || (currentTicks - Interlocked.Read(ref state.LastReportTicks) > 60))
+            if (force || isCompleted || folders % 250 == 0 || (currentTicks - Interlocked.Read(ref state.LastReportTicks) > 60))
             {
                 Interlocked.Exchange(ref state.LastReportTicks, currentTicks);
                 progress.Report(new ScanProgress(
@@ -60,7 +60,7 @@ public sealed class FastParallelScanner : IScanEngine
                     FoldersScanned: folders,
                     FilesScanned: Interlocked.Read(ref state.FileCounter),
                     BytesScanned: Interlocked.Read(ref state.ByteCounter),
-                    IsCompleted: false,
+                    IsCompleted: isCompleted,
                     IsCancelled: false));
             }
         }
@@ -70,10 +70,10 @@ public sealed class FastParallelScanner : IScanEngine
             var result = await Task.Run(() => ScanRecursive(
                 new DirectoryInfo(path),
                 state,
-                ReportProgress,
+                (p, f) => ReportProgress(p, f, false),
                 cancellationToken), cancellationToken).ConfigureAwait(false);
 
-            ReportProgress(path, force: true);
+            ReportProgress(path, force: true, isCompleted: true);
             return result;
         }
         catch (OperationCanceledException)
@@ -103,10 +103,16 @@ public sealed class FastParallelScanner : IScanEngine
         var children = new List<FsEntry>();
         var subDirs = new List<DirectoryInfo>();
 
+        var fileEnumOptions = new EnumerationOptions
+        {
+            IgnoreInaccessible = true,
+            ReturnSpecialDirectories = false
+        };
+
         try
         {
             // Enumerate files first
-            foreach (var file in dirInfo.EnumerateFiles())
+            foreach (var file in dirInfo.EnumerateFiles("*", fileEnumOptions))
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -140,28 +146,34 @@ public sealed class FastParallelScanner : IScanEngine
                     children: null));
             }
         }
-        catch (UnauthorizedAccessException)
+        catch (Exception ex) when (ex is UnauthorizedAccessException or DirectoryNotFoundException or IOException or System.Security.SecurityException)
         {
             // Access denied, continue with whatever entries we have
         }
-        catch (DirectoryNotFoundException)
+
+        var dirEnumOptions = new EnumerationOptions
         {
-            // Directory might have been removed
-        }
-        catch (IOException)
-        {
-            // I/O error
-        }
+            IgnoreInaccessible = true,
+            ReturnSpecialDirectories = false,
+            AttributesToSkip = FileAttributes.ReparsePoint
+        };
 
         try
         {
             // Enumerate subdirectories
-            foreach (var subDir in dirInfo.EnumerateDirectories())
+            foreach (var subDir in dirInfo.EnumerateDirectories("*", dirEnumOptions))
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                // Skip reparse points (symlinks, junctions) to avoid circular reference loops
-                if ((subDir.Attributes & FileAttributes.ReparsePoint) != 0)
+                try
+                {
+                    // Skip reparse points (symlinks, junctions) to avoid circular reference loops
+                    if ((subDir.Attributes & FileAttributes.ReparsePoint) != 0)
+                    {
+                        continue;
+                    }
+                }
+                catch
                 {
                     continue;
                 }
@@ -169,9 +181,10 @@ public sealed class FastParallelScanner : IScanEngine
                 subDirs.Add(subDir);
             }
         }
-        catch (UnauthorizedAccessException) { }
-        catch (DirectoryNotFoundException) { }
-        catch (IOException) { }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or DirectoryNotFoundException or IOException or System.Security.SecurityException)
+        {
+            // Access denied or unreadable, continue with collected subdirectories
+        }
 
         // Process subdirectories in parallel
         if (subDirs.Count > 0)

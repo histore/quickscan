@@ -38,9 +38,26 @@ public sealed partial class BarItemViewModel : ObservableObject
     public IBrush BarBrush => IsDirectory ? FolderBrush : FileBrush;
     public IBrush BorderBrush => IsDirectory ? FolderBorderBrush : FileBorderBrush;
 
-    public string TooltipDetails => IsDirectory
-        ? $"{Name}\nSize: {FormattedSize}\nFolders: {DirectoryCount:N0}\nFiles: {FileCount:N0}"
-        : $"{Name}\nSize: {FormattedSize}";
+    public string TooltipDetails
+    {
+        get
+        {
+            string sizeLabel = "Size";
+            string foldersLabel = "Folders";
+            string filesLabel = "Files";
+
+            if (Avalonia.Application.Current is { } app)
+            {
+                if (app.TryGetResource("Header.Size", null, out var s) && s is string sizeStr) sizeLabel = sizeStr;
+                if (app.TryGetResource("Label.Folders", null, out var fo) && fo is string foStr) foldersLabel = foStr;
+                if (app.TryGetResource("Label.Files", null, out var fi) && fi is string fiStr) filesLabel = fiStr;
+            }
+
+            return IsDirectory
+                ? $"{Name}\n{sizeLabel}: {FormattedSize}\n{foldersLabel}: {DirectoryCount:N0}\n{filesLabel}: {FileCount:N0}"
+                : $"{Name}\n{sizeLabel}: {FormattedSize}";
+        }
+    }
 
     public BarItemViewModel(FsEntry model, long parentSize, long maxSizeInView)
     {
