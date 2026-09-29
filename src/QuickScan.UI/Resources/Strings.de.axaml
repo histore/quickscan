@@ -22,6 +22,7 @@
     <x:String x:Key="Dialog.About.Version">Version</x:String>
     <x:String x:Key="Dialog.About.License">Lizenz: Apache License 2.0</x:String>
     <x:String x:Key="Dialog.About.Close">Schließen</x:String>
+    <x:String x:Key="Dialog.Picker.Title">Laufwerk oder Ordner zum Scannen auswählen</x:String>
     <x:String x:Key="Tooltip.GoUp">Übergeordneter Ordner (Alt+Nach oben)</x:String>
     <x:String x:Key="Tooltip.ToggleSidebar">Explorer-Seitenleiste umschalten (F9)</x:String>
     <x:String x:Key="Label.Files">Dateien</x:String>

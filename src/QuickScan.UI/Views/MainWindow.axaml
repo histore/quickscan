@@ -309,7 +309,6 @@
                              ItemsSource="{Binding BarItems}"
                              IsVisible="{Binding IsChartVisible}"
                              Background="Transparent"
-                             DoubleTapped="OnBarItemDoubleTapped"
                              Padding="8">
                         <ListBox.Styles>
                             <Style Selector="ListBoxItem">

@@ -25,10 +25,11 @@ public sealed class ProcessFileSystemLauncher : IFileSystemLauncher
                 if (File.Exists(path))
                 {
                     // Select file in Explorer
+                    var safePath = path.Replace("\"", "\\\"");
                     Process.Start(new ProcessStartInfo
                     {
                         FileName = "explorer.exe",
-                        Arguments = $"/select,\"{path}\"",
+                        Arguments = $"/select,\"{safePath}\"",
                         UseShellExecute = true
                     });
                 }
@@ -43,11 +44,11 @@ public sealed class ProcessFileSystemLauncher : IFileSystemLauncher
             }
             else if (OperatingSystem.IsMacOS())
             {
-                Process.Start("open", $"\"{path}\"");
+                Process.Start(new ProcessStartInfo("open") { ArgumentList = { path }, UseShellExecute = false });
             }
             else if (OperatingSystem.IsLinux())
             {
-                Process.Start("xdg-open", $"\"{path}\"");
+                Process.Start(new ProcessStartInfo("xdg-open") { ArgumentList = { path }, UseShellExecute = false });
             }
         }
         catch

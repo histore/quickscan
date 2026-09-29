@@ -22,6 +22,7 @@
     <x:String x:Key="Dialog.About.Version">Version</x:String>
     <x:String x:Key="Dialog.About.License">License: Apache License 2.0</x:String>
     <x:String x:Key="Dialog.About.Close">Close</x:String>
+    <x:String x:Key="Dialog.Picker.Title">Select Drive or Folder to Scan</x:String>
     <x:String x:Key="Tooltip.GoUp">Go to parent directory (Alt+Up)</x:String>
     <x:String x:Key="Tooltip.ToggleSidebar">Toggle Explorer Sidebar (F9)</x:String>
     <x:String x:Key="Label.Files">Files</x:String>

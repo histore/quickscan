@@ -16,6 +16,9 @@ public sealed class PercentageWidthConverter : IMultiValueConverter
             values[0] is double totalWidth &&
             values[1] is double percentage &&
             !double.IsNaN(totalWidth) &&
+            !double.IsInfinity(totalWidth) &&
+            !double.IsNaN(percentage) &&
+            !double.IsInfinity(percentage) &&
             totalWidth > 0)
         {
             var calculated = totalWidth * Math.Clamp(percentage / 100.0, 0.0, 1.0);

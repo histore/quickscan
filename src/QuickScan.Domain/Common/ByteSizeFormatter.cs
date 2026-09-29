@@ -33,6 +33,12 @@ public static class ByteSizeFormatter
             unitIndex++;
         }
 
+        if (Math.Round(size, 2) >= 1024.0 && unitIndex < Units.Length - 1)
+        {
+            size /= 1024.0;
+            unitIndex++;
+        }
+
         return unitIndex == 0
             ? $"{bytes} B"
             : $"{size.ToString("F2", formatProvider)} {Units[unitIndex]}";

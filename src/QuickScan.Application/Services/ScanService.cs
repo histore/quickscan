@@ -66,24 +66,37 @@ public sealed class ScanService : IDisposable
             return;
         }
 
-        // Normalize path
-        var normalizedPath = Path.GetFullPath(path);
+        var trimmed = path.Trim();
+        if (trimmed.Length == 2 && trimmed[1] == ':')
+        {
+            trimmed += Path.DirectorySeparatorChar;
+        }
+
+        var normalizedPath = Path.GetFullPath(trimmed);
+        var root = Path.GetPathRoot(normalizedPath);
+        if (!string.Equals(normalizedPath, root, StringComparison.OrdinalIgnoreCase))
+        {
+            normalizedPath = normalizedPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        }
 
         if (!forceScan && _scanCache.TryGet(normalizedPath, out var cachedEntry) && cachedEntry is not null)
         {
+            CancelScan();
             CurrentRoot = cachedEntry;
             CurrentPath = normalizedPath;
             ScanCompleted?.Invoke(cachedEntry);
             return;
         }
 
+        CancellationTokenSource cts;
         CancellationToken token;
         lock (_lock)
         {
             _currentCts?.Cancel();
             _currentCts?.Dispose();
             _currentCts = new CancellationTokenSource();
-            token = _currentCts.Token;
+            cts = _currentCts;
+            token = cts.Token;
             IsScanning = true;
         }
 
@@ -91,7 +104,10 @@ public sealed class ScanService : IDisposable
 
         var progressReporter = new Progress<ScanProgress>(p =>
         {
-            ProgressChanged?.Invoke(p);
+            if (!token.IsCancellationRequested)
+            {
+                ProgressChanged?.Invoke(p);
+            }
         });
 
         try
@@ -99,10 +115,20 @@ public sealed class ScanService : IDisposable
             var result = await _scanEngine.ScanDirectoryAsync(normalizedPath, progressReporter, token).ConfigureAwait(false);
             if (result is not null && !token.IsCancellationRequested)
             {
-                CurrentRoot = result;
-                CurrentPath = normalizedPath;
-                _scanCache.Set(result);
-                ScanCompleted?.Invoke(result);
+                lock (_lock)
+                {
+                    if (ReferenceEquals(_currentCts, cts))
+                    {
+                        CurrentRoot = result;
+                        CurrentPath = normalizedPath;
+                    }
+                }
+
+                if (!token.IsCancellationRequested)
+                {
+                    _scanCache.Set(result);
+                    ScanCompleted?.Invoke(result);
+                }
             }
         }
         catch (OperationCanceledException)
@@ -111,11 +137,23 @@ public sealed class ScanService : IDisposable
         }
         finally
         {
+            bool shouldNotifyStateChange = false;
             lock (_lock)
             {
-                IsScanning = false;
+                if (ReferenceEquals(_currentCts, cts))
+                {
+                    IsScanning = false;
+                    _currentCts = null;
+                    shouldNotifyStateChange = true;
+                }
             }
-            ScanningStateChanged?.Invoke(false);
+
+            if (shouldNotifyStateChange)
+            {
+                ScanningStateChanged?.Invoke(false);
+            }
+
+            cts.Dispose();
         }
     }
 
